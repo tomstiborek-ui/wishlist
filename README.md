@@ -2,10 +2,10 @@
 
 A shared gift wish list for Bohoušek and Boženka. It's a static site for GitHub Pages, with data and photos stored in Supabase.
 
-- Each person adds what they'd like to get: name, price, category, a link to where to buy it, a note and up to 6 photos. Photos are resized to 1600 px in the browser before upload.
-- Filters: who it's for, category, price bands or an exact range, and "hide reserved". Sort by newest, price or name.
-- **Koupím to**: either person can reserve a wish of the other's so they know it's taken care of. The person the wish is for never sees this; the database hides it from them.
-- You can edit and delete only your own wishes.
+- Login is a single shared password; there's no choosing who you are.
+- When you add a wish, you pick who it's for (Bohoušek / Boženka) and fill in the name, price, category, a link to where to buy it, a note and up to 6 photos. Photos are resized to 1600 px in the browser before upload.
+- Filters: who it's for, category, price bands or an exact range. Sort by newest, price or name.
+- Anyone can edit and delete any wish.
 
 ## Demo mode
 While `DB.url` in `app.js` is empty, the site runs in demo mode: no password, sample data, and everything is saved only in the current browser.

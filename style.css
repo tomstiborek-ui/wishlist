@@ -125,6 +125,9 @@ dialog::backdrop{background:rgba(20,27,33,.5)}
 .pick .main{position:absolute;left:4px;bottom:4px;font-size:11px;font-weight:700;background:rgba(20,27,33,.75);color:#fff;padding:2px 6px;border-radius:4px}
 .add-photo{aspect-ratio:1;border-radius:8px;border:1.5px dashed var(--line);display:grid;place-items:center;text-align:center;color:var(--muted);font-size:13px;cursor:pointer;padding:6px}
 .add-photo:hover,.add-photo.drag{border-color:var(--ink);color:var(--ink)}
+.for-pick{display:grid;grid-template-columns:1fr 1fr;width:100%}
+.for-pick button{justify-content:center;padding:9px 8px}
+.seg.for-pick .avatar.mini{display:inline-grid!important}
 .msg{font-size:14px;color:var(--danger);min-height:1em}
 
 /* Detail */

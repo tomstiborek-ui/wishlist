@@ -10,7 +10,6 @@ const PEOPLE = {
   bohousek: { name: "Bohoušek", acc: "Bohouška", gen: "Bohouška" },
   bozenka:  { name: "Boženka",  acc: "Boženku",  gen: "Boženky" },
 };
-const other = w => w === "bohousek" ? "bozenka" : "bohousek";
 const DEFAULT_CATS = ["Oblečení", "Elektronika", "Knihy", "Zážitky", "Domácnost", "Sport", "Kosmetika", "Šperky", "Hobby"];
 const PRICE_BANDS = [
   { id: "a", label: "do 500 Kč", min: 0, max: 500 },
@@ -54,14 +53,13 @@ const rpc = (fn, body) => fetch(`${DB.url}/rest/v1/rpc/${fn}`, { method: "POST",
 
 const remoteApi = {
   check: pass => rpc("gifts_check", { pass }),
-  list: () => rpc("gifts_list", { pass: S.pass, viewer: S.me }),
-  save: g => rpc("gifts_save", { pass: S.pass, viewer: S.me, gift: g }),
-  del: id => rpc("gifts_delete", { pass: S.pass, viewer: S.me, gift_id: id }),
-  reserve: (id, val) => rpc("gifts_reserve", { pass: S.pass, viewer: S.me, gift_id: id, val }),
+  list: () => rpc("gifts_list", { pass: S.pass, viewer: "" }),
+  save: (g, who) => rpc("gifts_save", { pass: S.pass, viewer: who, gift: g }),
+  del: (id, who) => rpc("gifts_delete", { pass: S.pass, viewer: who, gift_id: id }),
   upload: async (file, i) => {
     const blob = await shrinkPhoto(file);
     const ext = blob.type === "image/webp" ? "webp" : "jpg";
-    const path = `${S.me}/${Date.now()}-${i}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const path = `${Date.now()}-${i}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
     const r = await fetch(`${DB.url}/storage/v1/object/${BUCKET}/${path}`, { method: "POST", headers: { ...auth(), "Content-Type": blob.type }, body: blob });
     if (!r.ok) throw new Error("upload");
     return path;
@@ -74,73 +72,62 @@ const demoWrite = rows => { try { localStorage.setItem(DEMO_KEY, JSON.stringify(
 function seed() {
   const t = Date.now(), d = n => new Date(t - n * 864e5).toISOString();
   return [
-    { id: "s1", for_whom: "bozenka", name: "Kašmírová šála", price: 1890, category: "Oblečení", url: "https://www.example.com/sala", note: "Ideálně béžová nebo šedá.", photos: [], reserved: false, created_at: d(1) },
-    { id: "s2", for_whom: "bohousek", name: "Kniha: Projekt Hail Mary", price: 449, category: "Knihy", url: "", note: "", photos: [], reserved: true, created_at: d(2) },
-    { id: "s3", for_whom: "bozenka", name: "Víkend ve wellness", price: 6500, category: "Zážitky", url: "", note: "Klidně někde na Šumavě.", photos: [], reserved: false, created_at: d(3) },
-    { id: "s4", for_whom: "bohousek", name: "Bezdrátová sluchátka", price: 3990, category: "Elektronika", url: "https://www.example.com/sluchatka", note: "", photos: [], reserved: false, created_at: d(4) },
-    { id: "s5", for_whom: "bohousek", name: "Běžecké ponožky", price: 290, category: "Sport", url: "", note: "Velikost 43–46", photos: [], reserved: false, created_at: d(5) },
+    { id: "s1", for_whom: "bozenka", name: "Kašmírová šála", price: 1890, category: "Oblečení", url: "https://www.example.com/sala", note: "Ideálně béžová nebo šedá.", photos: [], created_at: d(1) },
+    { id: "s2", for_whom: "bohousek", name: "Kniha: Projekt Hail Mary", price: 449, category: "Knihy", url: "", note: "", photos: [], created_at: d(2) },
+    { id: "s3", for_whom: "bozenka", name: "Víkend ve wellness", price: 6500, category: "Zážitky", url: "", note: "Klidně někde na Šumavě.", photos: [], created_at: d(3) },
+    { id: "s4", for_whom: "bohousek", name: "Bezdrátová sluchátka", price: 3990, category: "Elektronika", url: "https://www.example.com/sluchatka", note: "", photos: [], created_at: d(4) },
+    { id: "s5", for_whom: "bohousek", name: "Běžecké ponožky", price: 290, category: "Sport", url: "", note: "Velikost 43–46", photos: [], created_at: d(5) },
   ];
 }
 const demoApi = {
   check: async () => true,
-  list: async () => demoRows().map(g => ({ ...g, reserved: g.for_whom === S.me ? null : g.reserved })),
-  save: async g => {
+  list: async () => demoRows(),
+  save: async (g, who) => {
     const rows = demoRows();
-    if (g.id) { const i = rows.findIndex(r => r.id === g.id && r.for_whom === S.me); if (i < 0) throw new Error("not found"); rows[i] = { ...rows[i], ...g, price: g.price === "" ? null : g.price }; }
-    else rows.unshift({ ...g, id: "d" + Date.now(), for_whom: S.me, reserved: false, created_at: new Date().toISOString() });
+    if (g.id) { const i = rows.findIndex(r => r.id === g.id && r.for_whom === who); if (i < 0) throw new Error("not found"); rows[i] = { ...rows[i], ...g, price: g.price === "" ? null : g.price }; }
+    else rows.unshift({ ...g, id: "d" + Date.now(), for_whom: who, created_at: new Date().toISOString() });
     demoWrite(rows);
   },
-  del: async id => demoWrite(demoRows().filter(r => !(r.id === id && r.for_whom === S.me))),
-  reserve: async (id, val) => demoWrite(demoRows().map(r => r.id === id && r.for_whom !== S.me ? { ...r, reserved: val } : r)),
+  del: async (id, who) => demoWrite(demoRows().filter(r => !(r.id === id && r.for_whom === who))),
   upload: async file => blobToDataUrl(await shrinkPhoto(file, 900)),
 };
 const api = DEMO ? demoApi : remoteApi;
 
 /* ---------- state ---------- */
 const S = {
-  me: store.get("darky-me"), pass: store.get("darky-pass"),
+  pass: store.get("darky-pass"),
   gifts: [], loading: true, error: "",
-  f: { who: "all", cat: null, band: null, min: "", max: "", hideRes: false, sort: "new" },
+  f: { who: "all", cat: null, band: null, min: "", max: "", sort: "new" },
 };
 try { Object.assign(S.f, JSON.parse(store.get("darky-filters")) || {}); } catch (_) {}
 const saveFilters = () => store.set("darky-filters", JSON.stringify(S.f));
 
 /* ---------- login ---------- */
-let gateWho = S.me;
 function showGate() {
   $("#app").hidden = true; $("#fab").hidden = true; $("#gate").hidden = false;
-  document.querySelectorAll(".whos button").forEach(b => b.setAttribute("aria-pressed", b.dataset.who === gateWho));
-  $("#gate-pass").hidden = DEMO;
-  $("#gate-msg").textContent = DEMO ? "Ukázkový režim — heslo není potřeba." : "";
+  $("#gate-msg").textContent = ""; $("#gate-pass").focus();
 }
-document.querySelectorAll(".whos button").forEach(b => b.addEventListener("click", () => {
-  gateWho = b.dataset.who;
-  document.querySelectorAll(".whos button").forEach(x => x.setAttribute("aria-pressed", x === b));
-  if (!DEMO) $("#gate-pass").focus();
-}));
 $("#gate-form").addEventListener("submit", async e => {
   e.preventDefault();
   const msg = $("#gate-msg"), btn = e.target.querySelector("[type=submit]"), pass = $("#gate-pass").value;
-  if (!gateWho) { msg.textContent = "Vyber, kdo jsi."; return; }
-  if (!DEMO && !pass) { msg.textContent = "Zadej heslo."; $("#gate-pass").focus(); return; }
-  btn.disabled = true; msg.textContent = DEMO ? "" : "Ověřuji…";
+  if (!pass) { msg.textContent = "Zadej heslo."; $("#gate-pass").focus(); return; }
+  btn.disabled = true; msg.textContent = "Ověřuji…";
   try {
     const ok = await api.check(pass);
     if (ok !== true) { msg.textContent = "Špatné heslo."; return; }
-    S.me = gateWho; S.pass = pass; store.set("darky-me", S.me); store.set("darky-pass", DEMO ? "" : pass);
+    S.pass = pass; store.set("darky-pass", pass);
     enter();
   } catch (_) { msg.textContent = "Heslo se teď nepodařilo ověřit. Zkus to znovu."; }
   finally { btn.disabled = false; }
 });
-$("#who-chip").addEventListener("click", () => {
-  if (!confirm(`Odhlásit se (${PEOPLE[S.me].name})?`)) return;
-  store.set("darky-pass", ""); S.pass = ""; gateWho = S.me; $("#gate-pass").value = ""; showGate();
+$("#logout").addEventListener("click", () => {
+  if (!confirm("Odhlásit se?")) return;
+  store.set("darky-pass", ""); S.pass = ""; $("#gate-pass").value = ""; showGate();
 });
 
 function enter() {
   $("#gate").hidden = true; $("#app").hidden = false; $("#fab").hidden = false; $("#demo").hidden = !DEMO;
-  $("#who-chip").innerHTML = `<span class="who-name">${esc(PEOPLE[S.me].name)}</span><span class="avatar ${S.me}">B</span>`;
-  $("#who-chip").setAttribute("aria-label", `Přihlášen(a) jako ${PEOPLE[S.me].name}. Odhlásit`);
+  $("#logout").hidden = DEMO;
   load();
 }
 async function load() {
@@ -170,8 +157,7 @@ function filtered(skip) {
   let list = S.gifts.filter(g =>
     (skip === "who" || f.who === "all" || g.for_whom === f.who) &&
     (skip === "cat" || !f.cat || g.category === f.cat) &&
-    inPrice(g, f) &&
-    !(f.hideRes && g.reserved === true));
+    inPrice(g, f));
   const by = {
     new: (a, b) => (b.created_at || "").localeCompare(a.created_at || ""),
     cheap: (a, b) => (a.price ?? Infinity) - (b.price ?? Infinity),
@@ -180,17 +166,16 @@ function filtered(skip) {
   }[f.sort] || (() => 0);
   return list.sort(by);
 }
-const isFiltered = () => S.f.who !== "all" || S.f.cat || S.f.band || S.f.min !== "" || S.f.max !== "" || S.f.hideRes;
+const isFiltered = () => S.f.who !== "all" || S.f.cat || S.f.band || S.f.min !== "" || S.f.max !== "";
 
 /* ---------- render ---------- */
 function render() {
-  if (!S.me) return;
   const f = S.f;
   // who
   const forWho = filtered("who");
   const n = w => forWho.filter(g => w === "all" || g.for_whom === w).length;
   $("#f-who").innerHTML = [["all", "Všichni"], ["bohousek", "Bohoušek"], ["bozenka", "Boženka"]]
-    .map(([id, l]) => `<button type="button" data-who="${id}" aria-pressed="${f.who === id}">${id !== "all" ? `<span class="avatar mini ${id}">B</span>` : ""}${l}${id === S.me ? `<span class="me-tag"> (já)</span>` : ""} <span class="count">${n(id)}</span></button>`).join("");
+    .map(([id, l]) => `<button type="button" data-who="${id}" aria-pressed="${f.who === id}">${id !== "all" ? `<span class="avatar mini ${id}">B</span>` : ""}${l} <span class="count">${n(id)}</span></button>`).join("");
   // categories
   const cats = categories();
   if (f.cat && !cats.includes(f.cat)) cats.push(f.cat);
@@ -200,9 +185,7 @@ function render() {
   $("#f-price").innerHTML = PRICE_BANDS.map(b => `<button type="button" class="chip" data-band="${b.id}" aria-pressed="${f.band === b.id}">${b.label}</button>`).join("");
   if (document.activeElement !== $("#f-min")) $("#f-min").value = f.min;
   if (document.activeElement !== $("#f-max")) $("#f-max").value = f.max;
-  $("#f-sort").value = f.sort; $("#f-hideres").checked = f.hideRes;
-  // "Hide reserved" only matters when you can see the other person's wishes
-  $("#hide-res-wrap").hidden = f.who === S.me;
+  $("#f-sort").value = f.sort;
 
   // list
   const grid = $("#grid"), empty = $("#empty");
@@ -214,17 +197,16 @@ function render() {
   $("#reset").hidden = !isFiltered();
   grid.innerHTML = list.map(card).join("");
   if (list.length) empty.innerHTML = "";
-  else if (!S.gifts.length) empty.innerHTML = `<div class="empty"><h2>Zatím žádná přání</h2><p>Přidej první věc, kterou by ti ${S.me === "bohousek" ? "Boženka" : "Bohoušek"} mohl${S.me === "bohousek" ? "a" : ""} koupit.</p><button class="btn primary" type="button" data-act="add">+ Přidat přání</button></div>`;
-  else if (f.who === S.me && !S.gifts.some(g => g.for_whom === S.me)) empty.innerHTML = `<div class="empty"><h2>Ještě sis nic nepřál${S.me === "bozenka" ? "a" : ""}</h2><button class="btn primary" type="button" data-act="add">+ Přidat přání</button></div>`;
+  else if (!S.gifts.length) empty.innerHTML = `<div class="empty"><h2>Zatím žádná přání</h2><p>Přidej první věc, kterou by sis přál(a) dostat.</p><button class="btn primary" type="button" data-act="add">+ Přidat přání</button></div>`;
+  else if (f.who !== "all" && !S.gifts.some(g => g.for_whom === f.who)) empty.innerHTML = `<div class="empty"><h2>${PEOPLE[f.who].name} zatím nemá žádná přání</h2><button class="btn primary" type="button" data-act="add">+ Přidat přání</button></div>`;
   else empty.innerHTML = `<div class="empty"><h2>Nic tomu neodpovídá</h2><p>Zkus upravit filtry.</p><button class="btn" type="button" data-act="reset">Zrušit filtry</button></div>`;
 }
 function card(g) {
-  const p = g.photos || [], url = safeUrl(g.url), res = g.reserved === true;
-  return `<article class="card${res ? " is-reserved" : ""}" data-id="${esc(g.id)}" tabindex="0" aria-label="${esc(g.name)}">
+  const p = g.photos || [], url = safeUrl(g.url);
+  return `<article class="card" data-id="${esc(g.id)}" tabindex="0" aria-label="${esc(g.name)}">
     <div class="ph">${p.length ? `<img src="${esc(photoSrc(p[0]))}" alt="" loading="lazy">` : GIFT_SVG}
       ${p.length > 1 ? `<span class="n">${p.length} fotky</span>` : ""}
       <span class="for ${g.for_whom}">pro ${PEOPLE[g.for_whom].acc}</span>
-      ${res ? `<span class="res-badge">✓ Kupuješ</span>` : ""}
     </div>
     <div class="cbody">
       <h3>${esc(g.name)}</h3>
@@ -242,7 +224,7 @@ document.addEventListener("click", e => {
   if (t.closest("#f-who") && t.dataset.who) { f.who = t.dataset.who; }
   else if (t.closest("#f-cat") && t.dataset.cat != null) { f.cat = t.dataset.cat || null; }
   else if (t.closest("#f-price") && t.dataset.band) { f.band = f.band === t.dataset.band ? null : t.dataset.band; f.min = f.max = ""; }
-  else if (t.id === "reset" || t.dataset.act === "reset") { Object.assign(f, { who: "all", cat: null, band: null, min: "", max: "", hideRes: false }); }
+  else if (t.id === "reset" || t.dataset.act === "reset") { Object.assign(f, { who: "all", cat: null, band: null, min: "", max: "" }); }
   else if (t.dataset.act === "add") return openEdit(null);
   else if (t.dataset.act === "reload") return load();
   else if (t.matches(".card")) return openView(t.dataset.id);
@@ -252,14 +234,13 @@ document.addEventListener("click", e => {
 document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches?.(".card")) { e.preventDefault(); openView(e.target.dataset.id); } });
 ["#f-min", "#f-max"].forEach(s => $(s).addEventListener("input", () => { S.f.min = $("#f-min").value; S.f.max = $("#f-max").value; S.f.band = null; saveFilters(); render(); }));
 $("#f-sort").addEventListener("change", e => { S.f.sort = e.target.value; saveFilters(); render(); });
-$("#f-hideres").addEventListener("change", e => { S.f.hideRes = e.target.checked; saveFilters(); render(); });
 addEventListener("scroll", () => document.body.classList.toggle("scrolled", scrollY > 4), { passive: true });
 
 /* ---------- detail ---------- */
 const dlgView = $("#dlg-view");
 function openView(id) {
   const g = S.gifts.find(x => x.id === id); if (!g) return;
-  const mine = g.for_whom === S.me, p = g.photos || [], url = safeUrl(g.url), res = g.reserved === true;
+  const p = g.photos || [], url = safeUrl(g.url);
   $("#view").innerHTML = `
     <div class="dlg-head"><h2>${esc(g.name)}</h2><button class="icon-btn" type="button" data-close aria-label="Zavřít">✕</button></div>
     <div class="dlg-body">
@@ -272,27 +253,19 @@ function openView(id) {
       </div>
       ${g.note ? `<p class="note">${esc(g.note)}</p>` : ""}
       ${url ? `<a class="btn primary" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Kde koupit · ${esc(domain(url))} ↗</a>` : ""}
-      ${mine ? "" : `<div class="reserve-box${res ? " on" : ""}">
-          <p>${res ? `<strong>Tohle kupuješ ty.</strong> ${PEOPLE[g.for_whom].name} to neuvidí.` : `Zamluv si to, ať víš, co už máš vyřešené. ${PEOPLE[g.for_whom].name} to neuvidí.`}</p>
-          <button class="btn small${res ? " ghost" : " primary"}" type="button" id="v-res">${res ? "Zrušit" : "Koupím to"}</button></div>`}
     </div>
-    ${mine ? `<div class="dlg-foot"><button class="btn ghost" type="button" id="v-edit">Upravit</button></div>` : ""}`;
+    <div class="dlg-foot"><button class="btn ghost" type="button" id="v-edit">Upravit</button></div>`;
   dlgView.querySelectorAll("[data-ph]").forEach(b => b.addEventListener("click", () => {
     $("#v-big").src = photoSrc(p[+b.dataset.ph]);
     dlgView.querySelectorAll("[data-ph]").forEach(x => x.setAttribute("aria-pressed", x === b));
   }));
-  $("#v-edit")?.addEventListener("click", () => { dlgView.close(); openEdit(g.id); });
-  $("#v-res")?.addEventListener("click", async e => {
-    e.target.disabled = true;
-    try { await api.reserve(g.id, !res); g.reserved = !res; toast(!res ? "Zamluveno ✓" : "Zamluvení zrušeno"); render(); openView(g.id); }
-    catch (_) { toast("Nepodařilo se uložit."); e.target.disabled = false; }
-  });
+  $("#v-edit").addEventListener("click", () => { dlgView.close(); openEdit(g.id); });
   if (!dlgView.open) dlgView.showModal();
 }
 
 /* ---------- add / edit ---------- */
 const dlgEdit = $("#dlg-edit");
-let editing = null, picks = [];  // picks: {path} saved, or {file, url} new
+let editing = null, picks = [], formFor = null;  // picks: {path} saved, or {file, url} new
 function openEdit(id) {
   const g = id ? S.gifts.find(x => x.id === id) : null;
   editing = g;
@@ -300,6 +273,8 @@ function openEdit(id) {
   $("#e-name").value = g?.name || ""; $("#e-price").value = g?.price ?? ""; $("#e-cat").value = g?.category || "";
   $("#e-url").value = g?.url || ""; $("#e-note").value = g?.note || ""; $("#edit-msg").textContent = "";
   $("#e-delete").hidden = !g;
+  formFor = g?.for_whom || (S.f.who !== "all" ? S.f.who : store.get("darky-lastfor")) || null;
+  markFor();
   picks.forEach(p => p.file && URL.revokeObjectURL(p.url));
   picks = (g?.photos || []).map(path => ({ path, url: photoSrc(path) }));
   const all = [...new Set([...DEFAULT_CATS, ...categories()])];
@@ -308,6 +283,8 @@ function openEdit(id) {
   markCat(); renderPicks();
   dlgEdit.showModal(); $("#e-name").focus();
 }
+function markFor() { document.querySelectorAll("#e-for button").forEach(b => b.setAttribute("aria-pressed", b.dataset.for === formFor)); }
+$("#e-for").addEventListener("click", e => { const b = e.target.closest("[data-for]"); if (b) { formFor = b.dataset.for; markFor(); } });
 const markCat = () => $("#e-cat-suggest").querySelectorAll(".chip").forEach(c => c.setAttribute("aria-pressed", c.dataset.pickCat === $("#e-cat").value));
 $("#e-cat").addEventListener("input", markCat);
 $("#e-cat-suggest").addEventListener("click", e => { const c = e.target.closest("[data-pick-cat]"); if (!c) return; $("#e-cat").value = $("#e-cat").value === c.dataset.pickCat ? "" : c.dataset.pickCat; markCat(); });
@@ -334,6 +311,7 @@ $("#edit-form").addEventListener("submit", async e => {
   e.preventDefault();
   const msg = $("#edit-msg"), btn = $("#e-save");
   const name = $("#e-name").value.trim(), price = $("#e-price").value.trim(), rawUrl = $("#e-url").value.trim();
+  if (!formFor) { msg.textContent = "Vyber, pro koho přání je."; return; }
   if (!name) { msg.textContent = "Vyplň, co si přeješ."; $("#e-name").focus(); return; }
   if (price && (!/^\d+$/.test(price))) { msg.textContent = "Cena musí být celé číslo v Kč."; $("#e-price").focus(); return; }
   let url = rawUrl;
@@ -349,16 +327,20 @@ $("#edit-form").addEventListener("submit", async e => {
       else photos.push(p.path);
     }
     msg.textContent = "Ukládám…";
-    await api.save({ id: editing?.id, name, price: price === "" ? "" : +price, category: $("#e-cat").value.trim(), url, note: $("#e-note").value.trim(), photos });
+    const data = { name, price: price === "" ? "" : +price, category: $("#e-cat").value.trim(), url, note: $("#e-note").value.trim(), photos };
+    if (editing && editing.for_whom !== formFor) {      // moved to the other person: re-create, then remove the old one
+      await api.save(data, formFor); await api.del(editing.id, editing.for_whom);
+    } else await api.save({ ...data, id: editing?.id }, formFor);
+    store.set("darky-lastfor", formFor);
     dlgEdit.close(); toast(editing ? "Uloženo ✓" : "Přání přidáno ✓");
-    if (!editing && S.f.who === other(S.me)) { S.f.who = "all"; saveFilters(); }
+    if (S.f.who !== "all" && S.f.who !== formFor) { S.f.who = "all"; saveFilters(); }
     await load();
   } catch (err) { msg.textContent = err.message?.startsWith("Úložiště") ? err.message : "Nepodařilo se uložit. Zkus to znovu."; }
   finally { btn.disabled = false; }
 });
 $("#e-delete").addEventListener("click", async () => {
   if (!editing || !confirm(`Smazat „${editing.name}“?`)) return;
-  try { await api.del(editing.id); dlgEdit.close(); toast("Smazáno"); await load(); }
+  try { await api.del(editing.id, editing.for_whom); dlgEdit.close(); toast("Smazáno"); await load(); }
   catch (_) { $("#edit-msg").textContent = "Nepodařilo se smazat."; }
 });
 
@@ -368,4 +350,4 @@ document.querySelectorAll("dialog").forEach(d => {
 });
 
 /* ---------- start ---------- */
-if (S.me && (DEMO || S.pass)) enter(); else showGate();
+if (DEMO || S.pass) enter(); else showGate();
