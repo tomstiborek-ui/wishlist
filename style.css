@@ -327,3 +327,8 @@ dialog{color:var(--ink)}
 body.on-detail .pill-wrap{display:none}
 body.on-detail .hdr-in{padding-bottom:8px}
 @media (max-width:744px){ body.on-detail .hdr{display:none} }
+
+/* product shots: show the whole photo, let white backgrounds melt into the grey */
+.mosaic.n1 button.mi img,.mosaic.n2 button.mi img,.d-carousel .track img{object-fit:contain;mix-blend-mode:multiply;padding:16px}
+.mosaic.n1 button.mi,.mosaic.n2 button.mi{background:var(--soft)}
+.mosaic.n1{height:min(52vh,440px)}
