@@ -11,12 +11,6 @@ const PEOPLE = {
   bozenka:  { name: "Boženka",  acc: "Boženku",  gen: "Boženky" },
 };
 const DEFAULT_CATS = ["Oblečení", "Elektronika", "Knihy", "Zážitky", "Domácnost", "Sport", "Kosmetika", "Šperky", "Hobby"];
-const PRICE_BANDS = [
-  { id: "a", label: "do 500 Kč", min: 0, max: 500 },
-  { id: "b", label: "500–2 000", min: 500, max: 2000 },
-  { id: "c", label: "2 000–5 000", min: 2000, max: 5000 },
-  { id: "d", label: "nad 5 000", min: 5000, max: null },
-];
 const MAX_PHOTOS = 6;
 
 /* ---------- small helpers ---------- */
@@ -32,7 +26,6 @@ const safeUrl = u => { try { const x = new URL(u); return /^https?:$/.test(x.pro
 const photoSrc = p => /^(data:|https?:|blob:)/.test(p) ? p : `${DB.url}/storage/v1/object/public/${BUCKET}/${p.split("/").map(encodeURIComponent).join("/")}`;
 let toastT;
 function toast(t) { const el = $("#toast"); el.textContent = t; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => el.hidden = true, 2400); }
-const GIFT_SVG = `<svg class="none" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>`;
 
 /* ---------- photos: shrink to 1600 px, WebP where possible ---------- */
 function shrinkPhoto(file, max = 1600) {
@@ -94,46 +87,39 @@ const demoApi = {
 const api = DEMO ? demoApi : remoteApi;
 
 /* ---------- state ---------- */
-const S = {
-  pass: "",   // no password: the database accepts an empty one (see gifts.sql)
-  gifts: [], loading: true, error: "",
-  f: { who: "all", cat: null, band: null, min: "", max: "", sort: "new" },
-};
-try { Object.assign(S.f, JSON.parse(store.get("darky-filters")) || {}); } catch (_) {}
+const CAT_ICON = { "Oblečení": "👕", "Elektronika": "🎧", "Knihy": "📚", "Zážitky": "🎟️", "Domácnost": "🏠", "Sport": "⚽", "Kosmetika": "💄", "Šperky": "💍", "Hobby": "🎨" };
+const catIcon = c => CAT_ICON[c] || "🎁";
+const SORTS = [["new", "Nejnovější"], ["cheap", "Nejlevnější"], ["dear", "Nejdražší"], ["name", "Podle názvu"]];
+const NO_FILTER = { who: "all", cat: null, min: null, max: null, sort: "new" };
+const S = { pass: "", gifts: [], loading: true, error: "", f: { ...NO_FILTER } };
+try { const s = JSON.parse(store.get("darky-filters")) || {}; for (const k in NO_FILTER) if (k in s) S.f[k] = s[k]; } catch (_) {}
 const saveFilters = () => store.set("darky-filters", JSON.stringify(S.f));
+const ICON = {
+  left: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>`,
+  right: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`,
+  back: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>`,
+  edit: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>`,
+  grid: `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="10" y="3" width="5" height="5" rx="1"/><rect x="17" y="3" width="4" height="5" rx="1"/><rect x="3" y="10" width="5" height="5" rx="1"/><rect x="10" y="10" width="5" height="5" rx="1"/><rect x="17" y="10" width="4" height="5" rx="1"/><rect x="3" y="17" width="5" height="4" rx="1"/><rect x="10" y="17" width="5" height="4" rx="1"/><rect x="17" y="17" width="4" height="4" rx="1"/></svg>`,
+  ext: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>`,
+  photo: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 8"/></svg>`,
+};
+const plural = (n, one, few, many) => n === 1 ? one : n >= 2 && n <= 4 ? few : many;
 
-/* ---------- start-up ---------- */
-function enter() {
-  $("#demo").hidden = !DEMO;
-  load();
-}
 async function load() {
   S.loading = true; render();
   try { S.gifts = (await api.list()) || []; S.error = ""; }
-  catch (e) {
-    S.error = "Přání se nepodařilo načíst.";
-  }
+  catch (_) { S.error = "Přání se nepodařilo načíst."; }
   S.loading = false; render();
 }
 
 /* ---------- filtering ---------- */
-const categories = () => {
-  const used = [...new Set(S.gifts.map(g => g.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, "cs"));
-  return used;
-};
-function inPrice(g, f) {
-  const band = PRICE_BANDS.find(b => b.id === f.band);
-  const min = band ? band.min : (f.min === "" ? null : +f.min), max = band ? band.max : (f.max === "" ? null : +f.max);
-  if (min == null && max == null) return true;
-  if (g.price == null) return false;
-  return (min == null || g.price >= min) && (max == null || g.price <= max);
-}
-function filtered(skip) {
-  const f = S.f;
-  let list = S.gifts.filter(g =>
-    (skip === "who" || f.who === "all" || g.for_whom === f.who) &&
-    (skip === "cat" || !f.cat || g.category === f.cat) &&
-    inPrice(g, f));
+const categories = () => [...new Set(S.gifts.map(g => g.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, "cs"));
+function applyFilter(f, skipWho) {
+  const list = S.gifts.filter(g =>
+    (skipWho || f.who === "all" || g.for_whom === f.who) &&
+    (!f.cat || g.category === f.cat) &&
+    (f.min == null || (g.price != null && g.price >= f.min)) &&
+    (f.max == null || (g.price != null && g.price <= f.max)));
   const by = {
     new: (a, b) => (b.created_at || "").localeCompare(a.created_at || ""),
     cheap: (a, b) => (a.price ?? Infinity) - (b.price ?? Infinity),
@@ -142,131 +128,279 @@ function filtered(skip) {
   }[f.sort] || (() => 0);
   return list.sort(by);
 }
-const isFiltered = () => S.f.who !== "all" || S.f.cat || S.f.band || S.f.min !== "" || S.f.max !== "";
+const activeCount = f => (f.cat ? 1 : 0) + (f.min != null || f.max != null ? 1 : 0) + (f.sort !== "new" ? 1 : 0);
+const priceLabel = f => f.min == null && f.max == null ? "Jakákoli" : f.min == null ? `do ${fmtPrice(f.max)}` : f.max == null ? `od ${fmtPrice(f.min)}` : `${new Intl.NumberFormat("cs-CZ").format(f.min)}–${fmtPrice(f.max)}`;
+
+/* ---------- router ---------- */
+const route = () => { const m = location.hash.match(/^#\/p\/(.+)$/); return m ? decodeURIComponent(m[1]) : null; };
+addEventListener("hashchange", () => { render(); scrollTo(0, 0); });
 
 /* ---------- render ---------- */
 function render() {
-  const f = S.f;
-  // who
-  const forWho = filtered("who");
+  const id = route();
+  $("#list").hidden = !!id; $("#detail").hidden = !id; $("#hdr").hidden = false;
+  document.body.classList.toggle("on-detail", !!id);
+  renderHeader();
+  if (id) renderDetail(id); else renderList();
+}
+function renderHeader() {
+  const f = S.f, forWho = applyFilter(f, true);
   const n = w => forWho.filter(g => w === "all" || g.for_whom === w).length;
-  $("#f-who").innerHTML = [["all", "Oba"], ["bohousek", "Bohoušek"], ["bozenka", "Boženka"]]
-    .map(([id, l]) => `<button type="button" data-who="${id}" aria-pressed="${f.who === id}">${id !== "all" ? `<span class="avatar mini ${id}">B</span>` : ""}${l} <span class="count">${n(id)}</span></button>`).join("");
-  // categories
-  const cats = categories();
-  if (f.cat && !cats.includes(f.cat)) cats.push(f.cat);
-  $("#f-cat").innerHTML = `<button type="button" class="chip" data-cat="" aria-pressed="${!f.cat}">Vše</button>` +
-    cats.map(c => `<button type="button" class="chip" data-cat="${esc(c)}" aria-pressed="${f.cat === c}">${esc(c)}</button>`).join("");
-  // price
-  $("#f-price").innerHTML = PRICE_BANDS.map(b => `<button type="button" class="chip" data-band="${b.id}" aria-pressed="${f.band === b.id}">${b.label}</button>`).join("");
-  if (document.activeElement !== $("#f-min")) $("#f-min").value = f.min;
-  if (document.activeElement !== $("#f-max")) $("#f-max").value = f.max;
-  $("#f-sort").value = f.sort;
-
-  // list
-  const grid = $("#grid"), empty = $("#empty");
-  if (S.loading && !S.gifts.length) { grid.innerHTML = ""; empty.innerHTML = `<div class="empty">Načítám…</div>`; $("#count").textContent = ""; return; }
-  if (S.error) { grid.innerHTML = ""; empty.innerHTML = `<div class="empty"><h2>${esc(S.error)}</h2><button class="btn" type="button" data-act="reload">Zkusit znovu</button></div>`; return; }
-  const list = filtered();
-  $("#count").textContent = `${list.length} přání` +
-    (list.length ? ` · celkem ${fmtPrice(list.reduce((s, g) => s + (g.price || 0), 0))}` : "");
-  $("#reset").hidden = !isFiltered();
+  const onList = !route();
+  $("#who-tabs").innerHTML = [["all", "Oba", "🎁"], ["bohousek", "Bohoušek", "B"], ["bozenka", "Boženka", "B"]].map(([id, l, ic]) =>
+    `<button class="tab" type="button" data-who="${id}" aria-pressed="${onList && f.who === id}"><span class="ti ${id}" aria-hidden="true">${ic}</span>${l}${S.gifts.length ? `<span class="n">${n(id)}</span>` : ""}</button>`).join("");
+  $("#sp-cat").textContent = f.cat ? `${catIcon(f.cat)} ${f.cat}` : "Vše";
+  $("#sp-price").textContent = priceLabel(f);
+  $("#sp-sort").textContent = SORTS.find(s => s[0] === f.sort)?.[1] || "Nejnovější";
+  $("#sp-cat").parentElement.classList.toggle("on", !!f.cat);
+  $("#sp-price").parentElement.classList.toggle("on", f.min != null || f.max != null);
+  $("#sp-sort").parentElement.classList.toggle("on", f.sort !== "new");
+  const c = activeCount(f); $("#f-badge").hidden = !c; $("#f-badge").textContent = c;
+}
+function renderList() {
+  const f = S.f, grid = $("#grid"), empty = $("#empty");
+  $("#demo").hidden = !DEMO;
+  const title = f.who === "all" ? "Přání pro oba" : `Přání pro ${PEOPLE[f.who].acc}`;
+  $("#res-title").textContent = title;
+  if (S.loading && !S.gifts.length) {
+    $("#res-sub").textContent = "Načítám…"; empty.innerHTML = "";
+    grid.innerHTML = Array.from({ length: 8 }, () => `<div class="card skel"><div class="ph"></div><div class="sk" style="width:70%"></div><div class="sk" style="width:45%"></div></div>`).join("");
+    return;
+  }
+  if (S.error) {
+    $("#res-sub").textContent = ""; grid.innerHTML = "";
+    empty.innerHTML = `<div class="empty"><div class="big">😕</div><h2>${esc(S.error)}</h2><p>Zkontroluj připojení a zkus to znovu.</p><button class="btn-dark" type="button" data-act="reload">Zkusit znovu</button></div>`;
+    return;
+  }
+  const list = applyFilter(f), total = list.reduce((s, g) => s + (g.price || 0), 0);
+  $("#res-sub").innerHTML = list.length
+    ? `${list.length} ${plural(list.length, "přání", "přání", "přání")} · celkem ${fmtPrice(total)}${activeCount(f) || f.who !== "all" ? ` · <button type="button" data-act="reset">Zrušit filtry</button>` : ""}`
+    : "";
   grid.innerHTML = list.map(card).join("");
   if (list.length) empty.innerHTML = "";
-  else if (!S.gifts.length) empty.innerHTML = `<div class="empty"><h2>Zatím žádná přání</h2><p>Přidej první věc, kterou by sis přál(a) dostat.</p><button class="btn primary" type="button" data-act="add">+ Přidat přání</button></div>`;
-  else if (f.who !== "all" && !S.gifts.some(g => g.for_whom === f.who)) empty.innerHTML = `<div class="empty"><h2>${PEOPLE[f.who].name} zatím nemá žádná přání</h2><button class="btn primary" type="button" data-act="add">+ Přidat přání</button></div>`;
-  else empty.innerHTML = `<div class="empty"><h2>Nic tomu neodpovídá</h2><p>Zkus upravit filtry.</p><button class="btn" type="button" data-act="reset">Zrušit filtry</button></div>`;
+  else if (!S.gifts.length) empty.innerHTML = `<div class="empty"><div class="big">🎁</div><h2>Zatím žádná přání</h2><p>Přidej první věc, kterou by sis přál(a) dostat.</p><button class="btn-grad" style="width:auto" type="button" data-act="add">Přidat přání</button></div>`;
+  else if (f.who !== "all" && !S.gifts.some(g => g.for_whom === f.who)) empty.innerHTML = `<div class="empty"><div class="big">🎈</div><h2>${PEOPLE[f.who].name} zatím nemá žádná přání</h2><p>Přidej první přání pro ${PEOPLE[f.who].acc}.</p><button class="btn-grad" style="width:auto" type="button" data-act="add">Přidat přání</button></div>`;
+  else empty.innerHTML = `<div class="empty"><div class="big">🔍</div><h2>Nic tomu neodpovídá</h2><p>Zkus změnit nebo zrušit některé filtry.</p><button class="btn-line" type="button" data-act="reset">Zrušit filtry</button></div>`;
+}
+function photosHTML(g, cls = "") {
+  const p = g.photos || [];
+  if (!p.length) return `<div class="noimg ${cls}" aria-hidden="true">${catIcon(g.category)}</div>`;
+  return `<div class="track ${cls}">${p.map((x, i) => `<img src="${esc(photoSrc(x))}" alt="${i ? "" : esc(g.name)}" loading="lazy" draggable="false">`).join("")}</div>`;
 }
 function card(g) {
   const p = g.photos || [], url = safeUrl(g.url);
   return `<article class="card" data-id="${esc(g.id)}" tabindex="0" aria-label="${esc(g.name)}">
-    <div class="ph">${p.length ? `<img src="${esc(photoSrc(p[0]))}" alt="" loading="lazy">` : GIFT_SVG}
-      ${p.length > 1 ? `<span class="n">${p.length} fotky</span>` : ""}
-      <span class="for ${g.for_whom}">pro ${PEOPLE[g.for_whom].acc}</span>
+    <div class="ph">${photosHTML(g)}
+      <span class="tag"><i class="dot-p ${g.for_whom}"></i>pro ${PEOPLE[g.for_whom].acc}</span>
+      ${p.length > 1 ? `<button class="arr l" type="button" data-step="-1" aria-label="Předchozí fotka" disabled>${ICON.left}</button><button class="arr r" type="button" data-step="1" aria-label="Další fotka">${ICON.right}</button>
+        <div class="dots">${p.slice(0, 5).map((_, i) => `<i class="${i ? "" : "on"}"></i>`).join("")}</div>` : ""}
     </div>
     <div class="cbody">
-      <h3>${esc(g.name)}</h3>
-      ${url ? `<a class="shop" href="${esc(url)}" target="_blank" rel="noopener noreferrer" data-stop>↗ ${esc(domain(url))}</a>` : ""}
-      <div class="meta">${g.price != null ? `<span class="price">${fmtPrice(g.price)}</span>` : `<span class="price na">cena neuvedena</span>`}${g.category ? `<span class="cat">${esc(g.category)}</span>` : ""}</div>
+      <div class="c1">${esc(g.name)}</div>
+      <div class="c2">${[g.category, url && domain(url)].filter(Boolean).map(esc).join(" · ") || "&nbsp;"}</div>
+      <div class="c3">${g.price != null ? `<b>${fmtPrice(g.price)}</b>` : `<span class="na">Cena neuvedena</span>`}</div>
     </div>
   </article>`;
 }
-
-/* ---------- filter events ---------- */
-document.addEventListener("click", e => {
-  const t = e.target.closest("button,[data-id],a"); if (!t) return;
-  const f = S.f;
-  if (t.matches("[data-stop]")) return;          // shop link inside a card
-  if (t.closest("#f-who") && t.dataset.who) { f.who = t.dataset.who; }
-  else if (t.closest("#f-cat") && t.dataset.cat != null) { f.cat = t.dataset.cat || null; }
-  else if (t.closest("#f-price") && t.dataset.band) { f.band = f.band === t.dataset.band ? null : t.dataset.band; f.min = f.max = ""; }
-  else if (t.id === "reset" || t.dataset.act === "reset") { Object.assign(f, { who: "all", cat: null, band: null, min: "", max: "" }); }
-  else if (t.dataset.act === "add") return openEdit(null);
-  else if (t.dataset.act === "reload") return load();
-  else if (t.matches(".card")) return openView(t.dataset.id);
-  else return;
-  saveFilters(); render();
-});
-document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches?.(".card")) { e.preventDefault(); openView(e.target.dataset.id); } });
-["#f-min", "#f-max"].forEach(s => $(s).addEventListener("input", () => { S.f.min = $("#f-min").value; S.f.max = $("#f-max").value; S.f.band = null; saveFilters(); render(); }));
-$("#f-sort").addEventListener("change", e => { S.f.sort = e.target.value; saveFilters(); render(); });
-addEventListener("scroll", () => document.body.classList.toggle("scrolled", scrollY > 4), { passive: true });
+// keep carousel dots + arrows in sync with swiping
+document.addEventListener("scroll", e => {
+  const t = e.target; if (!(t instanceof Element) || !t.classList.contains("track")) return;
+  const i = Math.round(t.scrollLeft / t.clientWidth), n = t.children.length, box = t.parentElement;
+  box.querySelectorAll(".dots i").forEach((d, k) => d.classList.toggle("on", k === Math.min(i, 4)));
+  const l = box.querySelector(".arr.l"), r = box.querySelector(".arr.r"); if (l) l.disabled = i <= 0; if (r) r.disabled = i >= n - 1;
+  const c = box.querySelector(".count"); if (c) c.textContent = `${i + 1} / ${n}`;
+}, true);
 
 /* ---------- detail ---------- */
-const dlgView = $("#dlg-view");
-function openView(id) {
-  const g = S.gifts.find(x => x.id === id); if (!g) return;
-  const p = g.photos || [], url = safeUrl(g.url);
-  $("#view").innerHTML = `
-    <div class="dlg-head"><h2>${esc(g.name)}</h2><button class="icon-btn" type="button" data-close aria-label="Zavřít">✕</button></div>
-    <div class="dlg-body">
-      ${p.length ? `<div class="gallery"><div class="big"><img id="v-big" src="${esc(photoSrc(p[0]))}" alt="${esc(g.name)}"></div>
-        ${p.length > 1 ? `<div class="thumbs">${p.map((x, i) => `<button type="button" data-ph="${i}" aria-pressed="${i === 0}" aria-label="Fotka ${i + 1}"><img src="${esc(photoSrc(x))}" alt=""></button>`).join("")}</div>` : ""}</div>` : ""}
-      <div class="d-meta">
-        ${g.price != null ? `<span class="price">${fmtPrice(g.price)}</span>` : `<span class="price na">cena neuvedena</span>`}
-        ${g.category ? `<span class="cat">${esc(g.category)}</span>` : ""}
-        <span class="for ${g.for_whom}">pro ${PEOPLE[g.for_whom].acc}</span>
+function renderDetail(id) {
+  const el = $("#detail"), g = S.gifts.find(x => x.id === id);
+  if (!g) {
+    el.innerHTML = S.loading ? `<div class="empty">Načítám…</div>` : `<div class="empty"><div class="big">🤷</div><h2>Tohle přání už neexistuje</h2><p>Možná bylo smazané.</p><a class="btn-dark" href="#">Zpět na přání</a></div>`;
+    return;
+  }
+  const p = g.photos || [], url = safeUrl(g.url), who = PEOPLE[g.for_whom];
+  const shown = p.slice(0, 5);
+  const added = (() => { try { return new Date(g.created_at).toLocaleDateString("cs-CZ", { day: "numeric", month: "long", year: "numeric" }); } catch (_) { return ""; } })();
+  const buy = url ? `<a class="btn-grad" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Kde koupit ${ICON.ext}</a>` : `<button class="btn-line" type="button" data-act="edit">Přidat odkaz</button>`;
+  el.innerHTML = `
+    <a class="back" href="#" aria-label="Zpět na přání">${ICON.back}<span>Všechna přání</span></a>
+    <div class="d-carousel">${p.length ? `${photosHTML(g)}${p.length > 1 ? `<span class="count">1 / ${p.length}</span>` : ""}` : `<div class="noimg">${catIcon(g.category)}</div>`}</div>
+    <div class="d-wrap">
+      <div class="d-title"><h1>${esc(g.name)}</h1><div class="d-acts"><button type="button" data-act="edit">${ICON.edit} Upravit</button></div></div>
+      ${p.length ? `<div class="mosaic n${shown.length}">${shown.map((x, i) => `<button class="mi m${i}" type="button" data-tour="${i}" aria-label="Zobrazit fotku ${i + 1}"><img src="${esc(photoSrc(x))}" alt="${i ? "" : esc(g.name)}"></button>`).join("")}
+        ${p.length > 1 ? `<button class="all-ph" type="button" data-tour="0">${ICON.grid} Zobrazit všechny fotky</button>` : ""}</div>`
+        : `<div class="mosaic n1"><div class="noimg">${catIcon(g.category)}</div></div>`}
+      <div class="d-body">
+        <div class="d-main">
+          <div class="d-sec">
+            <h2>${g.category ? `${esc(g.category)} pro ${who.acc}` : `Přání pro ${who.acc}`}</h2>
+            <p class="sub">${[g.price != null ? fmtPrice(g.price) : "cena neuvedena", p.length ? `${p.length} ${plural(p.length, "fotka", "fotky", "fotek")}` : "", url ? domain(url) : ""].filter(Boolean).map(esc).join(" · ")}</p>
+          </div>
+          <div class="d-sec who-row"><span class="av ${g.for_whom}">B</span><div><b>Přeje si ${who.name}</b><span>${added ? `Přidáno ${esc(added)}` : ""}</span></div></div>
+          <div class="d-sec feat">
+            <div><span class="fi">${catIcon(g.category)}</span><div>${esc(g.category || "Bez kategorie")}<small>Kategorie</small></div></div>
+            <div><span class="fi">🏷️</span><div>${g.price != null ? `Přibližně ${fmtPrice(g.price)}` : "Cena neuvedena"}<small>Cena</small></div></div>
+            <div><span class="fi">🛍️</span><div>${url ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(domain(url))}</a>` : "Odkaz nebyl přidán"}<small>Kde koupit</small></div></div>
+          </div>
+          ${g.note ? `<div class="d-sec"><h3>Poznámka</h3><p class="note">${esc(g.note)}</p></div>` : ""}
+        </div>
+        <aside class="book">
+          <div class="pr">${g.price != null ? `${fmtPrice(g.price)} <small>přibližně</small>` : `<small>Cena neuvedena</small>`}</div>
+          ${url ? `<div class="shopinfo"><div><span>OBCHOD</span><b>${esc(domain(url))}</b></div></div>` : ""}
+          ${buy}
+          <p class="fine">${url ? "Odkaz se otevře v nové záložce" : "U přání zatím není odkaz na obchod"}</p>
+        </aside>
       </div>
-      ${g.note ? `<p class="note">${esc(g.note)}</p>` : ""}
-      ${url ? `<a class="btn primary" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Kde koupit · ${esc(domain(url))} ↗</a>` : ""}
     </div>
-    <div class="dlg-foot"><button class="btn ghost" type="button" id="v-edit">Upravit</button></div>`;
-  dlgView.querySelectorAll("[data-ph]").forEach(b => b.addEventListener("click", () => {
-    $("#v-big").src = photoSrc(p[+b.dataset.ph]);
-    dlgView.querySelectorAll("[data-ph]").forEach(x => x.setAttribute("aria-pressed", x === b));
-  }));
-  $("#v-edit").addEventListener("click", () => { dlgView.close(); openEdit(g.id); });
-  if (!dlgView.open) dlgView.showModal();
+    <div class="m-bar"><div class="pr">${g.price != null ? fmtPrice(g.price) : "Cena neuvedena"}<small>${esc(g.category || "pro " + who.acc)}</small></div>${url ? `<a class="btn-grad" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Kde koupit</a>` : `<button class="btn-dark" type="button" data-act="edit">Upravit</button>`}</div>`;
 }
+function openTour(g, start) {
+  const p = g.photos || [], body = $("#tour-body");
+  body.innerHTML = p.map((x, i) => `<img id="tour-${i}" src="${esc(photoSrc(x))}" alt="${esc(g.name)} – fotka ${i + 1}">`).join("");
+  $("#tour-count").textContent = `${p.length} ${plural(p.length, "fotka", "fotky", "fotek")}`;
+  $("#dlg-tour").showModal();
+  requestAnimationFrame(() => document.getElementById(`tour-${start}`)?.scrollIntoView({ block: "start" }));
+}
+
+/* ---------- clicks ---------- */
+document.addEventListener("click", e => {
+  const t = e.target.closest("button,a,[data-id]"); if (!t) return;
+  const f = S.f;
+  if (t.dataset.step) {                                   // card carousel arrow
+    e.stopPropagation(); const tr = t.parentElement.querySelector(".track");
+    tr.scrollBy({ left: +t.dataset.step * tr.clientWidth, behavior: "smooth" }); return;
+  }
+  if (t.closest("#who-tabs") && t.dataset.who) { f.who = t.dataset.who; saveFilters(); if (route()) location.hash = ""; else render(); return; }
+  if (t.dataset.openFilter != null) return openFilter(t.dataset.openFilter);
+  if (t.dataset.act === "reset") { Object.assign(f, NO_FILTER); saveFilters(); render(); return; }
+  if (t.dataset.act === "add") return openEdit(null);
+  if (t.dataset.act === "edit") return openEdit(route());
+  if (t.dataset.act === "reload") return load();
+  if (t.dataset.tour != null) { const g = S.gifts.find(x => x.id === route()); if (g) openTour(g, +t.dataset.tour); return; }
+  if (t.matches(".card")) { location.hash = `#/p/${encodeURIComponent(t.dataset.id)}`; }
+});
+document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches?.(".card")) { e.preventDefault(); location.hash = `#/p/${encodeURIComponent(e.target.dataset.id)}`; } });
+addEventListener("scroll", () => document.body.classList.toggle("scrolled", scrollY > 8), { passive: true });
+
+/* ---------- filters modal (edits a draft, applied with the footer button) ---------- */
+const dlgF = $("#dlg-filter");
+let draft = null;
+function priceScale() {
+  const ps = S.gifts.map(g => g.price).filter(p => p != null);
+  const top = Math.max(1000, ...ps), step = top > 20000 ? 1000 : top > 5000 ? 500 : 100;
+  return { ps, max: Math.ceil(top / step) * step, step };
+}
+function openFilter(section) {
+  draft = { ...S.f };
+  renderFilter();
+  dlgF.showModal();
+  if (section) dlgF.querySelector(`[data-sec="${section}"]`)?.scrollIntoView({ block: "start" });
+  else $("#flt-body").scrollTop = 0;
+}
+function renderFilter() {
+  const d = draft, cats = categories(), sc = priceScale();
+  const countIn = c => S.gifts.filter(g => g.category === c && (d.who === "all" || g.for_whom === d.who)).length;
+  const BUCKETS = 32, hist = Array(BUCKETS).fill(0);
+  sc.ps.forEach(p => hist[Math.min(BUCKETS - 1, Math.floor(p / sc.max * BUCKETS))]++);
+  const hmax = Math.max(1, ...hist);
+  const lo = d.min ?? 0, hi = d.max ?? sc.max;
+  $("#flt-body").innerHTML = `
+    <section class="sec" data-sec="who"><h3>Pro koho</h3>
+      <div class="seg-box">${[["all", "Oba"], ["bohousek", "Bohoušek"], ["bozenka", "Boženka"]].map(([id, l]) => `<button type="button" data-d-who="${id}" aria-pressed="${d.who === id}">${l}</button>`).join("")}</div>
+    </section>
+    <section class="sec" data-sec="cat"><h3>Kategorie</h3>
+      ${cats.length ? `<div class="tiles">${cats.map(c => `<button class="tile" type="button" data-d-cat="${esc(c)}" aria-pressed="${d.cat === c}"><span class="ic">${catIcon(c)}</span>${esc(c)}<span class="cnt">${countIn(c)} ${plural(countIn(c), "přání", "přání", "přání")}</span></button>`).join("")}</div>`
+        : `<p class="hint">Kategorie se objeví, jakmile je přání budou mít.</p>`}
+    </section>
+    <section class="sec" data-sec="price"><h3>Cena</h3>
+      <p class="hint">Přibližná cena dárku</p>
+      ${sc.ps.length ? `<div class="hist" aria-hidden="true">${hist.map((h, i) => { const a = i / BUCKETS * sc.max, b = (i + 1) / BUCKETS * sc.max; return `<i class="${b <= lo || a >= hi && hi < sc.max || a > hi ? "out" : ""}" style="height:${h ? Math.max(8, h / hmax * 100) : 2}%"></i>`; }).join("")}</div>
+      <div class="range"><div class="rail"></div><div class="fill" style="left:calc(14px + (100% - 28px) * ${lo / sc.max});right:calc(14px + (100% - 28px) * ${1 - hi / sc.max})"></div>
+        <input type="range" id="r-lo" min="0" max="${sc.max}" step="${sc.step}" value="${lo}" aria-label="Minimální cena">
+        <input type="range" id="r-hi" min="0" max="${sc.max}" step="${sc.step}" value="${hi}" aria-label="Maximální cena"></div>` : ""}
+      <div class="minmax">
+        <div class="mm">Minimum<label><input id="n-lo" type="number" inputmode="numeric" min="0" value="${d.min ?? ""}" placeholder="0">Kč</label></div>
+        <div class="mm">Maximum<label><input id="n-hi" type="number" inputmode="numeric" min="0" value="${d.max ?? ""}" placeholder="${new Intl.NumberFormat("cs-CZ").format(sc.max)}+">Kč</label></div>
+      </div>
+    </section>
+    <section class="sec" data-sec="sort"><h3>Řazení</h3>
+      <div class="pills">${SORTS.map(([id, l]) => `<button type="button" data-d-sort="${id}" aria-pressed="${d.sort === id}">${l}</button>`).join("")}</div>
+    </section>`;
+  updateFilterFoot();
+  const sc2 = sc;
+  const rl = $("#r-lo"), rh = $("#r-hi");
+  if (rl) {
+    const onRange = () => {
+      let a = +rl.value, b = +rh.value; if (a > b) [a, b] = [b, a];
+      draft.min = a > 0 ? a : null; draft.max = b < sc2.max ? b : null;
+      $("#n-lo").value = draft.min ?? ""; $("#n-hi").value = draft.max ?? "";
+      paintRange(sc2);
+    };
+    rl.addEventListener("input", onRange); rh.addEventListener("input", onRange);
+  }
+  ["#n-lo", "#n-hi"].forEach(s => $(s).addEventListener("input", () => {
+    const a = $("#n-lo").value, b = $("#n-hi").value;
+    draft.min = a === "" ? null : Math.max(0, +a); draft.max = b === "" ? null : Math.max(0, +b);
+    if (rl) { rl.value = draft.min ?? 0; rh.value = draft.max ?? sc2.max; }
+    paintRange(sc2);
+  }));
+}
+function paintRange(sc) {
+  const lo = draft.min ?? 0, hi = draft.max ?? sc.max, fill = dlgF.querySelector(".range .fill");
+  if (fill) { fill.style.left = `calc(14px + (100% - 28px) * ${Math.min(1, lo / sc.max)})`; fill.style.right = `calc(14px + (100% - 28px) * ${Math.max(0, 1 - hi / sc.max)})`; }
+  dlgF.querySelectorAll(".hist i").forEach((el, i, all) => { const a = i / all.length * sc.max, b = (i + 1) / all.length * sc.max; el.classList.toggle("out", b <= lo || a > hi || (a >= hi && hi < sc.max)); });
+  updateFilterFoot();
+}
+function updateFilterFoot() {
+  const n = applyFilter(draft).length;
+  $("#flt-apply").textContent = n ? `Zobrazit ${n} ${plural(n, "přání", "přání", "přání")}` : "Žádná přání";
+  $("#flt-apply").disabled = !n && S.gifts.length > 0;
+}
+$("#flt-body").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.dWho) draft.who = b.dataset.dWho;
+  else if (b.dataset.dCat != null) draft.cat = draft.cat === b.dataset.dCat ? null : b.dataset.dCat;
+  else if (b.dataset.dSort) draft.sort = b.dataset.dSort;
+  else return;
+  const y = $("#flt-body").scrollTop; renderFilter(); $("#flt-body").scrollTop = y;
+});
+$("#flt-clear").addEventListener("click", () => { draft = { ...NO_FILTER }; const y = $("#flt-body").scrollTop; renderFilter(); $("#flt-body").scrollTop = y; });
+$("#flt-apply").addEventListener("click", () => {
+  if (draft.min != null && draft.max != null && draft.min > draft.max) [draft.min, draft.max] = [draft.max, draft.min];
+  S.f = { ...draft }; saveFilters(); dlgF.close();
+  if (route()) location.hash = ""; else render();
+});
 
 /* ---------- add / edit ---------- */
 const dlgEdit = $("#dlg-edit");
-let editing = null, picks = [], formFor = null;  // picks: {path} saved, or {file, url} new
+let editing = null, picks = [], formFor = null;   // picks: {path} saved, or {file, url} new
 function openEdit(id) {
   const g = id ? S.gifts.find(x => x.id === id) : null;
   editing = g;
   $("#edit-title").textContent = g ? "Upravit přání" : "Nové přání";
   $("#e-name").value = g?.name || ""; $("#e-price").value = g?.price ?? ""; $("#e-cat").value = g?.category || "";
   $("#e-url").value = g?.url || ""; $("#e-note").value = g?.note || ""; $("#edit-msg").textContent = "";
-  $("#e-delete").hidden = !g;
+  dlgEdit.querySelectorAll(".fbox.err").forEach(x => x.classList.remove("err"));
+  $("#e-delete").hidden = !g; $("#e-del-sp").hidden = !!g;
   formFor = g?.for_whom || (S.f.who !== "all" ? S.f.who : store.get("darky-lastfor")) || null;
   markFor();
   picks.forEach(p => p.file && URL.revokeObjectURL(p.url));
   picks = (g?.photos || []).map(path => ({ path, url: photoSrc(path) }));
   const all = [...new Set([...DEFAULT_CATS, ...categories()])];
   $("#cat-list").innerHTML = all.map(c => `<option value="${esc(c)}">`).join("");
-  $("#e-cat-suggest").innerHTML = all.map(c => `<button type="button" class="chip" data-pick-cat="${esc(c)}">${esc(c)}</button>`).join("");
+  $("#e-cat-tiles").innerHTML = all.map(c => `<button type="button" class="tile" data-pick-cat="${esc(c)}"><span class="ic">${catIcon(c)}</span>${esc(c)}</button>`).join("");
   markCat(); renderPicks();
-  dlgEdit.showModal(); $("#e-name").focus();
+  dlgEdit.showModal(); dlgEdit.querySelector(".m-body").scrollTop = 0;
+  if (!matchMedia("(max-width:744px)").matches) $("#e-name").focus();
 }
 function markFor() { document.querySelectorAll("#e-for button").forEach(b => b.setAttribute("aria-pressed", b.dataset.for === formFor)); }
 $("#e-for").addEventListener("click", e => { const b = e.target.closest("[data-for]"); if (b) { formFor = b.dataset.for; markFor(); } });
-const markCat = () => $("#e-cat-suggest").querySelectorAll(".chip").forEach(c => c.setAttribute("aria-pressed", c.dataset.pickCat === $("#e-cat").value));
+const markCat = () => $("#e-cat-tiles").querySelectorAll(".tile").forEach(c => c.setAttribute("aria-pressed", c.dataset.pickCat === $("#e-cat").value.trim()));
 $("#e-cat").addEventListener("input", markCat);
-$("#e-cat-suggest").addEventListener("click", e => { const c = e.target.closest("[data-pick-cat]"); if (!c) return; $("#e-cat").value = $("#e-cat").value === c.dataset.pickCat ? "" : c.dataset.pickCat; markCat(); });
+$("#e-cat-tiles").addEventListener("click", e => { const c = e.target.closest("[data-pick-cat]"); if (!c) return; $("#e-cat").value = $("#e-cat").value === c.dataset.pickCat ? "" : c.dataset.pickCat; markCat(); });
 function renderPicks() {
   $("#e-picks").innerHTML = picks.map((p, i) => `<div class="pick"><img src="${esc(p.url)}" alt="">${i === 0 ? `<span class="main">Hlavní</span>` : ""}<button type="button" data-unpick="${i}" aria-label="Odebrat fotku">✕</button></div>`).join("") +
-    (picks.length < MAX_PHOTOS ? `<label class="add-photo" for="e-files" tabindex="0">+ Přidat fotky<br><small>nebo přetáhni sem</small></label>` : "");
+    (picks.length < MAX_PHOTOS ? `<label class="add-photo" for="e-files" tabindex="0">${ICON.photo}<span>Přidat fotky</span></label>` : "");
 }
 function addFiles(files) {
   const imgs = [...files].filter(f => f.type.startsWith("image/")).slice(0, MAX_PHOTOS - picks.length);
@@ -280,50 +414,48 @@ const dz = $("#e-picks");
 dz.addEventListener("dragover", e => { e.preventDefault(); dz.querySelector(".add-photo")?.classList.add("drag"); });
 dz.addEventListener("dragleave", () => dz.querySelector(".add-photo")?.classList.remove("drag"));
 dz.addEventListener("drop", e => { e.preventDefault(); addFiles(e.dataTransfer.files); });
-// Paste an image (e.g. copied from an e-shop) straight into the form
 dlgEdit.addEventListener("paste", e => { const fs = [...(e.clipboardData?.files || [])]; if (fs.length) { e.preventDefault(); addFiles(fs); } });
 
 $("#edit-form").addEventListener("submit", async e => {
   e.preventDefault();
   const msg = $("#edit-msg"), btn = $("#e-save");
   const name = $("#e-name").value.trim(), price = $("#e-price").value.trim(), rawUrl = $("#e-url").value.trim();
-  if (!formFor) { msg.textContent = "Vyber, pro koho přání je."; return; }
-  if (!name) { msg.textContent = "Vyplň, co si přeješ."; $("#e-name").focus(); return; }
-  if (price && (!/^\d+$/.test(price))) { msg.textContent = "Cena musí být celé číslo v Kč."; $("#e-price").focus(); return; }
+  const fail = (sel, t) => { msg.textContent = t; if (sel) { $(sel).closest(".fbox")?.classList.add("err"); $(sel).focus(); } };
+  dlgEdit.querySelectorAll(".fbox.err").forEach(x => x.classList.remove("err"));
+  if (!formFor) { fail(null, "Vyber, pro koho přání je."); dlgEdit.querySelector(".m-body").scrollTop = 0; return; }
+  if (!name) return fail("#e-name", "Vyplň název přání.");
+  if (price && !/^\d+$/.test(price)) return fail("#e-price", "Cena musí být celé číslo v Kč.");
   let url = rawUrl;
   if (url && !/^https?:\/\//i.test(url)) url = "https://" + url;
-  if (url && !safeUrl(url)) { msg.textContent = "Odkaz nevypadá jako webová adresa."; $("#e-url").focus(); return; }
+  if (url && !safeUrl(url)) return fail("#e-url", "Odkaz nevypadá jako webová adresa.");
   btn.disabled = true;
   try {
-    const photos = [];
-    const newCount = picks.filter(p => p.file).length;
-    let done = 0;
+    const photos = [], newCount = picks.filter(p => p.file).length; let done = 0;
     for (const [i, p] of picks.entries()) {
-      if (p.file) { msg.textContent = `Nahrávám fotky… ${++done}/${newCount}`; photos.push(await api.upload(p.file, i)); }
+      if (p.file) { btn.textContent = `Nahrávám fotky ${++done}/${newCount}…`; photos.push(await api.upload(p.file, i)); }
       else photos.push(p.path);
     }
-    msg.textContent = "Ukládám…";
+    btn.textContent = "Ukládám…"; msg.textContent = "";
     const data = { name, price: price === "" ? "" : +price, category: $("#e-cat").value.trim(), url, note: $("#e-note").value.trim(), photos };
     if (editing && editing.for_whom !== formFor) {      // moved to the other person: re-create, then remove the old one
       await api.save(data, formFor); await api.del(editing.id, editing.for_whom);
+      if (route()) location.hash = "";
     } else await api.save({ ...data, id: editing?.id }, formFor);
     store.set("darky-lastfor", formFor);
-    dlgEdit.close(); toast(editing ? "Uloženo ✓" : "Přání přidáno ✓");
-    if (S.f.who !== "all" && S.f.who !== formFor) { S.f.who = "all"; saveFilters(); }
+    dlgEdit.close(); toast(editing ? "Změny uloženy" : "Přání přidáno");
+    if (!route() && S.f.who !== "all" && S.f.who !== formFor) { S.f.who = "all"; saveFilters(); }
     await load();
   } catch (err) { msg.textContent = err.message?.startsWith("Úložiště") ? err.message : "Nepodařilo se uložit. Zkus to znovu."; }
-  finally { btn.disabled = false; }
+  finally { btn.disabled = false; btn.textContent = "Uložit"; }
 });
 $("#e-delete").addEventListener("click", async () => {
   if (!editing || !confirm(`Smazat „${editing.name}“?`)) return;
-  try { await api.del(editing.id, editing.for_whom); dlgEdit.close(); toast("Smazáno"); await load(); }
+  try { await api.del(editing.id, editing.for_whom); dlgEdit.close(); toast("Přání smazáno"); if (route()) location.hash = ""; await load(); }
   catch (_) { $("#edit-msg").textContent = "Nepodařilo se smazat."; }
 });
 
-// Close buttons + click on backdrop
-document.querySelectorAll("dialog").forEach(d => {
-  d.addEventListener("click", e => { if (e.target === d || e.target.closest("[data-close]")) d.close(); });
-});
+// Close buttons + click on the backdrop
+document.querySelectorAll("dialog").forEach(d => d.addEventListener("click", e => { if (e.target === d || e.target.closest("[data-close]")) d.close(); }));
 
 /* ---------- start ---------- */
-enter();
+load();
