@@ -129,7 +129,7 @@ function applyFilter(f, skipWho) {
   return list.sort(by);
 }
 const activeCount = f => (f.cat ? 1 : 0) + (f.min != null || f.max != null ? 1 : 0) + (f.sort !== "new" ? 1 : 0);
-const priceLabel = f => f.min == null && f.max == null ? "Jakákoli" : f.min == null ? `do ${fmtPrice(f.max)}` : f.max == null ? `od ${fmtPrice(f.min)}` : `${new Intl.NumberFormat("cs-CZ").format(f.min)}–${fmtPrice(f.max)}`;
+const _priceLabel = f => f.min == null && f.max == null ? "Jakákoli" : f.min == null ? `do ${fmtPrice(f.max)}` : f.max == null ? `od ${fmtPrice(f.min)}` : `${new Intl.NumberFormat("cs-CZ").format(f.min)}–${fmtPrice(f.max)}`;
 
 /* ---------- router ---------- */
 const route = () => { const m = location.hash.match(/^#\/p\/(.+)$/); return m ? decodeURIComponent(m[1]) : null; };
@@ -138,24 +138,24 @@ addEventListener("hashchange", () => { render(); scrollTo(0, 0); });
 /* ---------- render ---------- */
 function render() {
   const id = route();
-  $("#list").hidden = !!id; $("#detail").hidden = !id; $("#hdr").hidden = false;
+  $("#list").hidden = !!id; $("#detail").hidden = !id;
   document.body.classList.toggle("on-detail", !!id);
   renderHeader();
   if (id) renderDetail(id); else renderList();
 }
 function renderHeader() {
-  const f = S.f, forWho = applyFilter(f, true);
+  const f = S.f, forWho = applyFilter({ ...f, who: "all" });
   const n = w => forWho.filter(g => w === "all" || g.for_whom === w).length;
-  const onList = !route();
-  $("#who-tabs").innerHTML = [["all", "Oba", "🎁"], ["bohousek", "Bohoušek", "B"], ["bozenka", "Boženka", "B"]].map(([id, l, ic]) =>
-    `<button class="tab" type="button" data-who="${id}" aria-pressed="${onList && f.who === id}"><span class="ti ${id}" aria-hidden="true">${ic}</span>${l}${S.gifts.length ? `<span class="n">${n(id)}</span>` : ""}</button>`).join("");
-  $("#sp-cat").textContent = f.cat ? `${catIcon(f.cat)} ${f.cat}` : "Vše";
-  $("#sp-price").textContent = priceLabel(f);
-  $("#sp-sort").textContent = SORTS.find(s => s[0] === f.sort)?.[1] || "Nejnovější";
-  $("#sp-cat").parentElement.classList.toggle("on", !!f.cat);
-  $("#sp-price").parentElement.classList.toggle("on", f.min != null || f.max != null);
-  $("#sp-sort").parentElement.classList.toggle("on", f.sort !== "new");
-  const c = activeCount(f); $("#f-badge").hidden = !c; $("#f-badge").textContent = c;
+  const who = $("#f-who");
+  [["all", "Oba"], ["bohousek", "Bohoušek"], ["bozenka", "Boženka"]].forEach(([id, l], k) => { who.options[k].textContent = S.gifts.length ? `${l} (${n(id)})` : l; });
+  who.value = f.who; who.classList.toggle("on", f.who !== "all");
+  const cats = categories(); if (f.cat && !cats.includes(f.cat)) cats.push(f.cat);
+  $("#f-cat").innerHTML = `<option value="">Vše</option>` + cats.map(c => `<option value="${esc(c)}">${catIcon(c)} ${esc(c)}</option>`).join("");
+  $("#f-cat").value = f.cat || ""; $("#f-cat").classList.toggle("on", !!f.cat);
+  if (document.activeElement !== $("#f-min")) $("#f-min").value = f.min ?? "";
+  if (document.activeElement !== $("#f-max")) $("#f-max").value = f.max ?? "";
+  $("#f-sort").value = f.sort; $("#f-sort").classList.toggle("on", f.sort !== "new");
+  $("#f-clear").hidden = !(activeCount(f) || f.who !== "all");
 }
 function renderList() {
   const f = S.f, grid = $("#grid"), empty = $("#empty");
@@ -270,8 +270,6 @@ document.addEventListener("click", e => {
     e.stopPropagation(); const tr = t.parentElement.querySelector(".track");
     tr.scrollBy({ left: +t.dataset.step * tr.clientWidth, behavior: "smooth" }); return;
   }
-  if (t.closest("#who-tabs") && t.dataset.who) { f.who = t.dataset.who; saveFilters(); if (route()) location.hash = ""; else render(); return; }
-  if (t.dataset.openFilter != null) return openFilter(t.dataset.openFilter);
   if (t.dataset.act === "reset") { Object.assign(f, NO_FILTER); saveFilters(); render(); return; }
   if (t.dataset.act === "add") return openEdit(null);
   if (t.dataset.act === "edit") return openEdit(route());
@@ -282,94 +280,16 @@ document.addEventListener("click", e => {
 document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches?.(".card")) { e.preventDefault(); location.hash = `#/p/${encodeURIComponent(e.target.dataset.id)}`; } });
 addEventListener("scroll", () => document.body.classList.toggle("scrolled", scrollY > 8), { passive: true });
 
-/* ---------- filters modal (edits a draft, applied with the footer button) ---------- */
-const dlgF = $("#dlg-filter");
-let draft = null;
-function priceScale() {
-  const ps = S.gifts.map(g => g.price).filter(p => p != null);
-  const top = Math.max(1000, ...ps), step = top > 20000 ? 1000 : top > 5000 ? 500 : 100;
-  return { ps, max: Math.ceil(top / step) * step, step };
-}
-function openFilter(section) {
-  draft = { ...S.f };
-  renderFilter();
-  dlgF.showModal();
-  if (section) dlgF.querySelector(`[data-sec="${section}"]`)?.scrollIntoView({ block: "start" });
-  else $("#flt-body").scrollTop = 0;
-}
-function renderFilter() {
-  const d = draft, cats = categories(), sc = priceScale();
-  const countIn = c => S.gifts.filter(g => g.category === c && (d.who === "all" || g.for_whom === d.who)).length;
-  const BUCKETS = 32, hist = Array(BUCKETS).fill(0);
-  sc.ps.forEach(p => hist[Math.min(BUCKETS - 1, Math.floor(p / sc.max * BUCKETS))]++);
-  const hmax = Math.max(1, ...hist);
-  const lo = d.min ?? 0, hi = d.max ?? sc.max;
-  $("#flt-body").innerHTML = `
-    <section class="sec" data-sec="who"><h3>Pro koho</h3>
-      <div class="seg-box">${[["all", "Oba"], ["bohousek", "Bohoušek"], ["bozenka", "Boženka"]].map(([id, l]) => `<button type="button" data-d-who="${id}" aria-pressed="${d.who === id}">${l}</button>`).join("")}</div>
-    </section>
-    <section class="sec" data-sec="cat"><h3>Kategorie</h3>
-      ${cats.length ? `<div class="tiles">${cats.map(c => `<button class="tile" type="button" data-d-cat="${esc(c)}" aria-pressed="${d.cat === c}"><span class="ic">${catIcon(c)}</span>${esc(c)}<span class="cnt">${countIn(c)} ${plural(countIn(c), "přání", "přání", "přání")}</span></button>`).join("")}</div>`
-        : `<p class="hint">Kategorie se objeví, jakmile je přání budou mít.</p>`}
-    </section>
-    <section class="sec" data-sec="price"><h3>Cena</h3>
-      <p class="hint">Přibližná cena dárku</p>
-      ${sc.ps.length ? `<div class="hist" aria-hidden="true">${hist.map((h, i) => { const a = i / BUCKETS * sc.max, b = (i + 1) / BUCKETS * sc.max; return `<i class="${b <= lo || a >= hi && hi < sc.max || a > hi ? "out" : ""}" style="height:${h ? Math.max(8, h / hmax * 100) : 2}%"></i>`; }).join("")}</div>
-      <div class="range"><div class="rail"></div><div class="fill" style="left:calc(14px + (100% - 28px) * ${lo / sc.max});right:calc(14px + (100% - 28px) * ${1 - hi / sc.max})"></div>
-        <input type="range" id="r-lo" min="0" max="${sc.max}" step="${sc.step}" value="${lo}" aria-label="Minimální cena">
-        <input type="range" id="r-hi" min="0" max="${sc.max}" step="${sc.step}" value="${hi}" aria-label="Maximální cena"></div>` : ""}
-      <div class="minmax">
-        <div class="mm">Minimum<label><input id="n-lo" type="number" inputmode="numeric" min="0" value="${d.min ?? ""}" placeholder="0">Kč</label></div>
-        <div class="mm">Maximum<label><input id="n-hi" type="number" inputmode="numeric" min="0" value="${d.max ?? ""}" placeholder="${new Intl.NumberFormat("cs-CZ").format(sc.max)}+">Kč</label></div>
-      </div>
-    </section>
-    <section class="sec" data-sec="sort"><h3>Řazení</h3>
-      <div class="pills">${SORTS.map(([id, l]) => `<button type="button" data-d-sort="${id}" aria-pressed="${d.sort === id}">${l}</button>`).join("")}</div>
-    </section>`;
-  updateFilterFoot();
-  const sc2 = sc;
-  const rl = $("#r-lo"), rh = $("#r-hi");
-  if (rl) {
-    const onRange = () => {
-      let a = +rl.value, b = +rh.value; if (a > b) [a, b] = [b, a];
-      draft.min = a > 0 ? a : null; draft.max = b < sc2.max ? b : null;
-      $("#n-lo").value = draft.min ?? ""; $("#n-hi").value = draft.max ?? "";
-      paintRange(sc2);
-    };
-    rl.addEventListener("input", onRange); rh.addEventListener("input", onRange);
-  }
-  ["#n-lo", "#n-hi"].forEach(s => $(s).addEventListener("input", () => {
-    const a = $("#n-lo").value, b = $("#n-hi").value;
-    draft.min = a === "" ? null : Math.max(0, +a); draft.max = b === "" ? null : Math.max(0, +b);
-    if (rl) { rl.value = draft.min ?? 0; rh.value = draft.max ?? sc2.max; }
-    paintRange(sc2);
-  }));
-}
-function paintRange(sc) {
-  const lo = draft.min ?? 0, hi = draft.max ?? sc.max, fill = dlgF.querySelector(".range .fill");
-  if (fill) { fill.style.left = `calc(14px + (100% - 28px) * ${Math.min(1, lo / sc.max)})`; fill.style.right = `calc(14px + (100% - 28px) * ${Math.max(0, 1 - hi / sc.max)})`; }
-  dlgF.querySelectorAll(".hist i").forEach((el, i, all) => { const a = i / all.length * sc.max, b = (i + 1) / all.length * sc.max; el.classList.toggle("out", b <= lo || a > hi || (a >= hi && hi < sc.max)); });
-  updateFilterFoot();
-}
-function updateFilterFoot() {
-  const n = applyFilter(draft).length;
-  $("#flt-apply").textContent = n ? `Zobrazit ${n} ${plural(n, "přání", "přání", "přání")}` : "Žádná přání";
-  $("#flt-apply").disabled = !n && S.gifts.length > 0;
-}
-$("#flt-body").addEventListener("click", e => {
-  const b = e.target.closest("button"); if (!b) return;
-  if (b.dataset.dWho) draft.who = b.dataset.dWho;
-  else if (b.dataset.dCat != null) draft.cat = draft.cat === b.dataset.dCat ? null : b.dataset.dCat;
-  else if (b.dataset.dSort) draft.sort = b.dataset.dSort;
-  else return;
-  const y = $("#flt-body").scrollTop; renderFilter(); $("#flt-body").scrollTop = y;
-});
-$("#flt-clear").addEventListener("click", () => { draft = { ...NO_FILTER }; const y = $("#flt-body").scrollTop; renderFilter(); $("#flt-body").scrollTop = y; });
-$("#flt-apply").addEventListener("click", () => {
-  if (draft.min != null && draft.max != null && draft.min > draft.max) [draft.min, draft.max] = [draft.max, draft.min];
-  S.f = { ...draft }; saveFilters(); dlgF.close();
-  if (route()) location.hash = ""; else render();
-});
+/* ---------- inline filters in the top bar ---------- */
+const setF = patch => { Object.assign(S.f, patch); saveFilters(); if (route()) location.hash = ""; else render(); };
+$("#f-who").addEventListener("change", e => setF({ who: e.target.value }));
+$("#f-cat").addEventListener("change", e => setF({ cat: e.target.value || null }));
+$("#f-sort").addEventListener("change", e => setF({ sort: e.target.value }));
+["#f-min", "#f-max"].forEach(sel => $(sel).addEventListener("input", () => {
+  const num = v => v === "" ? null : Math.max(0, +v);
+  setF({ min: num($("#f-min").value), max: num($("#f-max").value) });
+}));
+$(".seg.price").addEventListener("click", e => { if (e.target.tagName !== "INPUT") $("#f-min").focus(); });
 
 /* ---------- add / edit ---------- */
 const dlgEdit = $("#dlg-edit");

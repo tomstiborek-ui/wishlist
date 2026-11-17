@@ -7,35 +7,34 @@
 <meta name="theme-color" content="#ffffff">
 <title>Dárky · Bohoušek & Boženka</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
 
 <header class="hdr" id="hdr">
   <div class="hdr-in">
     <a class="logo" href="#" aria-label="Dárky – domů">
-      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>
       <span>dárky</span>
     </a>
-    <nav class="tabs" id="who-tabs" aria-label="Pro koho"></nav>
-    <div class="hdr-r">
-      <button class="ghost-round add-top" type="button" data-act="add">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-        Přidat přání
-      </button>
+    <div class="bar" role="search" aria-label="Filtry">
+      <label class="seg s1"><b>Pro koho</b>
+        <select id="f-who"><option value="all">Oba</option><option value="bohousek">Bohoušek</option><option value="bozenka">Boženka</option></select></label>
+      <span class="sep"></span>
+      <label class="seg s2"><b>Kategorie</b><select id="f-cat"></select></label>
+      <span class="sep"></span>
+      <div class="seg s3 price"><b>Cena</b>
+        <div class="pr-in"><input id="f-min" type="number" inputmode="numeric" min="0" step="100" placeholder="od" aria-label="Cena od"><span>–</span><input id="f-max" type="number" inputmode="numeric" min="0" step="100" placeholder="do" aria-label="Cena do"><span>Kč</span></div></div>
+      <span class="sep"></span>
+      <label class="seg s4"><b>Řazení</b>
+        <select id="f-sort"><option value="new">Nejnovější</option><option value="cheap">Nejlevnější</option><option value="dear">Nejdražší</option><option value="name">Podle názvu</option></select></label>
+      <button class="bar-clear" type="button" data-act="reset" id="f-clear" aria-label="Zrušit filtry" title="Zrušit filtry" hidden>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
-  </div>
-  <div class="pill-wrap">
-    <div class="pill" role="group" aria-label="Filtry">
-      <button class="pill-seg" type="button" data-open-filter="cat"><b>Kategorie</b><span id="sp-cat">Vše</span></button>
-      <span class="pill-sep"></span>
-      <button class="pill-seg" type="button" data-open-filter="price"><b>Cena</b><span id="sp-price">Jakákoli</span></button>
-      <span class="pill-sep"></span>
-      <button class="pill-seg" type="button" data-open-filter="sort"><b>Řazení</b><span id="sp-sort">Nejnovější</span></button>
-      <button class="pill-go" type="button" data-open-filter="" aria-label="Všechny filtry">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
-      </button>
-    </div>
+    <button class="add-top" type="button" data-act="add">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      Přidat přání
+    </button>
   </div>
 </header>
 
@@ -46,10 +45,6 @@
       <h1 id="res-title">Přání</h1>
       <p class="res-sub" id="res-sub"></p>
     </div>
-    <button class="filter-btn" type="button" data-open-filter="">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
-      Filtry<span class="badge" id="f-badge" hidden></span>
-    </button>
   </div>
   <div class="grid" id="grid"></div>
   <div id="empty"></div>
@@ -61,13 +56,6 @@
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
   Přidat přání
 </button>
-
-<!-- Filters -->
-<dialog class="modal" id="dlg-filter" aria-labelledby="flt-title">
-  <div class="m-head"><button class="x" type="button" data-close aria-label="Zavřít">✕</button><h2 id="flt-title">Filtry</h2><span></span></div>
-  <div class="m-body" id="flt-body"></div>
-  <div class="m-foot"><button class="ulink" type="button" id="flt-clear">Zrušit vše</button><button class="btn-dark" type="button" id="flt-apply">Zobrazit</button></div>
-</dialog>
 
 <!-- Add / edit -->
 <dialog class="modal" id="dlg-edit" aria-labelledby="edit-title">
@@ -119,6 +107,6 @@
 
 <div class="toast" id="toast" role="status" hidden></div>
 
-<script src="app.js?v=7"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>
