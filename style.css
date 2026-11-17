@@ -127,7 +127,7 @@ dialog{color:var(--ink)}
 .sec:last-of-type{border-bottom:0}
 .sec h3{font-size:22px;font-weight:600;margin-bottom:6px}
 .sec .hint{margin:0 0 18px;color:var(--muted)}
-.sec h3 + .seg-box,.sec h3 + .tiles,.sec h3 + .fgroup,.sec h3 + 
+.sec h3 + .seg-box,.sec h3 + .tiles,.sec h3 + .fgroup{margin-top:18px}
 .seg-box{display:flex;border:1px solid var(--line);border-radius:12px;padding:4px}
 .seg-box button{flex:1;height:48px;border:2px solid transparent;border-radius:10px;background:none;cursor:pointer;font-size:14px;font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:8px}
 .seg-box button + button{position:relative}
@@ -141,7 +141,7 @@ dialog{color:var(--ink)}
 .tile:active{transform:scale(.97)}
 .tile[aria-pressed="true"]{box-shadow:inset 0 0 0 2px var(--ink);border-color:var(--ink);background:var(--soft)}
 .tile .cnt{color:var(--muted);font-size:12px;font-weight:400;margin-top:-10px}
-.tiles.small{margin-top:16px;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
+.tiles.small{margin:0 0 4px;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
 .tiles.small .tile{flex-direction:row;align-items:center;gap:8px;padding:10px 12px;font-size:13px}
 .tiles.small .tile .ic{font-size:18px}
 
@@ -155,6 +155,8 @@ dialog{color:var(--ink)}
 .fbox span{font-size:12px;font-weight:600}
 .fbox input,.fbox textarea{border:0;outline:0;padding:2px 0 0;font-size:16px;background:none;width:100%}
 .fbox textarea{min-height:64px;resize:vertical}
+.fbox input[type=number]{-moz-appearance:textfield}
+.fbox input::-webkit-outer-spin-button,.fbox input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .fbox input::placeholder,.fbox textarea::placeholder{color:var(--faint)}
 .fbox.err{border-color:#C13515;box-shadow:0 0 0 1px #C13515;background:#FFF8F6}
 .picks{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px}

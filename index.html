@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#ffffff">
 <title>Dárky · Bohoušek & Boženka</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="style.css?v=9">
+<link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
 
@@ -73,14 +73,12 @@
         <h3>Co si přeješ</h3>
         <div class="fgroup">
           <label class="fbox"><span>Název</span><input id="e-name" required maxlength="200" placeholder="Např. kožené rukavice"></label>
-          <div class="frow2">
-            <label class="fbox"><span>Cena (Kč)</span><input id="e-price" type="number" inputmode="numeric" min="0" step="1" placeholder="Přibližně"></label>
-            <label class="fbox"><span>Kategorie</span><input id="e-cat" list="cat-list" maxlength="40" placeholder="Vyber níže nebo napiš"></label>
-          </div>
+          <label class="fbox"><span>Cena (Kč)</span><input id="e-price" type="number" inputmode="numeric" min="0" step="1" placeholder="Přibližně"></label>
+          <label class="fbox"><span>Kategorie</span><input id="e-cat" list="cat-list" maxlength="40" placeholder="Vyber níže nebo napiš"></label>
+          <div class="tiles small" id="e-cat-tiles"></div>
           <label class="fbox"><span>Odkaz, kde koupit</span><input id="e-url" type="url" inputmode="url" placeholder="https://…"></label>
           <label class="fbox"><span>Poznámka</span><textarea id="e-note" maxlength="1000" placeholder="Velikost, barva, varianta…"></textarea></label>
         </div>
-        <div class="tiles small" id="e-cat-tiles"></div>
       </section>
       <section class="sec">
         <h3>Fotky</h3>
@@ -107,6 +105,6 @@
 
 <div class="toast" id="toast" role="status" hidden></div>
 
-<script src="app.js?v=9"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>
