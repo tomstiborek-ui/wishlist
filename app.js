@@ -2,7 +2,7 @@
    Data lives in Supabase (setup: gifts.sql). With an empty DB.url the site runs in demo mode (data in this browser only). */
 "use strict";
 
-const DB = { url: "", key: "" };   // ← Supabase project URL + anon key
+const DB = { url: "https://qemmhggbpzicywjejtay.supabase.co", key: "sb_publishable_4Uvxd_75gAIi4ZdJZ7-1bQ_in6Y7SG9" };  // public (publishable) key
 const BUCKET = "gift-photos";
 const DEMO = !DB.url;
 
@@ -47,7 +47,8 @@ function shrinkPhoto(file, max = 1600) {
 const blobToDataUrl = b => new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(b); });
 
 /* ---------- API: Supabase or local demo ---------- */
-const hdr = () => ({ apikey: DB.key, Authorization: `Bearer ${DB.key}`, "Content-Type": "application/json" });
+const auth = () => DB.key.startsWith("eyJ") ? { apikey: DB.key, Authorization: `Bearer ${DB.key}` } : { apikey: DB.key };
+const hdr = () => ({ ...auth(), "Content-Type": "application/json" });
 const rpc = (fn, body) => fetch(`${DB.url}/rest/v1/rpc/${fn}`, { method: "POST", headers: hdr(), body: JSON.stringify(body) })
   .then(r => r.ok ? (r.status === 204 ? null : r.json()) : r.text().then(t => Promise.reject(new Error(t || r.status))));
 
@@ -61,7 +62,7 @@ const remoteApi = {
     const blob = await shrinkPhoto(file);
     const ext = blob.type === "image/webp" ? "webp" : "jpg";
     const path = `${S.me}/${Date.now()}-${i}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-    const r = await fetch(`${DB.url}/storage/v1/object/${BUCKET}/${path}`, { method: "POST", headers: { apikey: DB.key, Authorization: `Bearer ${DB.key}`, "Content-Type": blob.type }, body: blob });
+    const r = await fetch(`${DB.url}/storage/v1/object/${BUCKET}/${path}`, { method: "POST", headers: { ...auth(), "Content-Type": blob.type }, body: blob });
     if (!r.ok) throw new Error("upload");
     return path;
   },
