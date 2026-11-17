@@ -239,8 +239,10 @@ dialog{color:var(--ink)}
   .bar{justify-self:center}
 }
 @media (max-width:744px){
-  .hdr-in{grid-template-areas:"bar bar";padding:10px 12px;row-gap:0}
-  .logo,.add-top{display:none}
+  .hdr-in{grid-template-columns:1fr;grid-template-areas:"logo" "bar";padding:10px 12px 12px;row-gap:10px}
+  .logo{font-size:20px;padding-left:4px}
+  .logo svg{width:24px;height:24px}
+  .add-top{display:none}
   .bar{display:grid;grid-template-columns:1fr 1fr;height:auto;width:100%;border-radius:20px;padding:0;position:relative}
   .sep{display:none}
   .seg{min-width:0;height:58px;padding:0 16px;border-radius:0}
@@ -293,7 +295,7 @@ dialog{color:var(--ink)}
 /* detail page: compact header (desktop), no header on phones */
 body.on-detail .bar{display:none}
 body.on-detail .hdr-in{grid-template-columns:1fr auto;grid-template-areas:"logo add";min-height:80px}
-@media (max-width:744px){ body.on-detail .hdr{display:none} }
+@media (max-width:744px){ body.on-detail .hdr-in{min-height:52px;padding:10px 16px} }
 
 /* product shots: show the whole photo, let white backgrounds melt into the grey */
 .mosaic.n1 button.mi img,.mosaic.n2 button.mi img,.d-carousel .track img{object-fit:contain;mix-blend-mode:multiply;padding:16px}
