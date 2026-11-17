@@ -1,5 +1,5 @@
 -- Dárky: Supabase setup. Run once in Supabase → SQL Editor.
--- 1) Change the password on the line marked CHANGE ME before running.
+-- The site has no login: the shared password is empty ('').
 -- 2) Then put the project URL and anon key into app.js (const DB).
 
 create extension if not exists pgcrypto;
@@ -29,7 +29,7 @@ alter table public.gift_settings enable row level security;
 revoke all on public.gift_settings from anon, authenticated;
 
 insert into public.gift_settings (id, pass_hash)
-values (1, crypt('CHANGE ME', gen_salt('bf')))            -- <<< CHANGE ME
+values (1, crypt('', gen_salt('bf')))                     -- empty password = no login
 on conflict (id) do update set pass_hash = excluded.pass_hash;
 
 create or replace function public.gifts_check(pass text) returns boolean

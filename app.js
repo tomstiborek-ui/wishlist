@@ -95,46 +95,22 @@ const api = DEMO ? demoApi : remoteApi;
 
 /* ---------- state ---------- */
 const S = {
-  pass: store.get("darky-pass"),
+  pass: "",   // no password: the database accepts an empty one (see gifts.sql)
   gifts: [], loading: true, error: "",
   f: { who: "all", cat: null, band: null, min: "", max: "", sort: "new" },
 };
 try { Object.assign(S.f, JSON.parse(store.get("darky-filters")) || {}); } catch (_) {}
 const saveFilters = () => store.set("darky-filters", JSON.stringify(S.f));
 
-/* ---------- login ---------- */
-function showGate() {
-  $("#app").hidden = true; $("#fab").hidden = true; $("#gate").hidden = false;
-  $("#gate-msg").textContent = ""; $("#gate-pass").focus();
-}
-$("#gate-form").addEventListener("submit", async e => {
-  e.preventDefault();
-  const msg = $("#gate-msg"), btn = e.target.querySelector("[type=submit]"), pass = $("#gate-pass").value;
-  if (!pass) { msg.textContent = "Zadej heslo."; $("#gate-pass").focus(); return; }
-  btn.disabled = true; msg.textContent = "Ověřuji…";
-  try {
-    const ok = await api.check(pass);
-    if (ok !== true) { msg.textContent = "Špatné heslo."; return; }
-    S.pass = pass; store.set("darky-pass", pass);
-    enter();
-  } catch (_) { msg.textContent = "Heslo se teď nepodařilo ověřit. Zkus to znovu."; }
-  finally { btn.disabled = false; }
-});
-$("#logout").addEventListener("click", () => {
-  if (!confirm("Odhlásit se?")) return;
-  store.set("darky-pass", ""); S.pass = ""; $("#gate-pass").value = ""; showGate();
-});
-
+/* ---------- start-up ---------- */
 function enter() {
-  $("#gate").hidden = true; $("#app").hidden = false; $("#fab").hidden = false; $("#demo").hidden = !DEMO;
-  $("#logout").hidden = DEMO;
+  $("#demo").hidden = !DEMO;
   load();
 }
 async function load() {
   S.loading = true; render();
   try { S.gifts = (await api.list()) || []; S.error = ""; }
   catch (e) {
-    if (String(e.message).includes("bad password")) { store.set("darky-pass", ""); return showGate(); }
     S.error = "Přání se nepodařilo načíst.";
   }
   S.loading = false; render();
@@ -350,4 +326,4 @@ document.querySelectorAll("dialog").forEach(d => {
 });
 
 /* ---------- start ---------- */
-if (DEMO || S.pass) enter(); else showGate();
+enter();
