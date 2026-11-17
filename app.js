@@ -150,7 +150,7 @@ function render() {
   // who
   const forWho = filtered("who");
   const n = w => forWho.filter(g => w === "all" || g.for_whom === w).length;
-  $("#f-who").innerHTML = [["all", "Všichni"], ["bohousek", "Bohoušek"], ["bozenka", "Boženka"]]
+  $("#f-who").innerHTML = [["all", "Oba"], ["bohousek", "Bohoušek"], ["bozenka", "Boženka"]]
     .map(([id, l]) => `<button type="button" data-who="${id}" aria-pressed="${f.who === id}">${id !== "all" ? `<span class="avatar mini ${id}">B</span>` : ""}${l} <span class="count">${n(id)}</span></button>`).join("");
   // categories
   const cats = categories();
