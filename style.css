@@ -159,6 +159,13 @@ dialog{color:var(--ink)}
 .fbox input::-webkit-outer-spin-button,.fbox input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .fbox input::placeholder,.fbox textarea::placeholder{color:var(--faint)}
 .fbox.err{border-color:#C13515;box-shadow:0 0 0 1px #C13515;background:#FFF8F6}
+.fetch-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:-4px}
+.chip-btn{height:36px;padding:0 14px;border:1px solid var(--line);border-radius:999px;background:#fff;font-weight:600;font-size:13px;cursor:pointer}
+.chip-btn:hover{border-color:var(--ink)}
+.chip-btn:disabled{opacity:.5;cursor:default}
+#e-fetch-msg{color:var(--muted);font-size:13px}
+#e-fetch-msg.err{color:#C13515}
+.pick .src{position:absolute;left:8px;bottom:8px;background:rgba(255,255,255,.95);border-radius:999px;padding:3px 8px;font-size:11px;font-weight:600}
 .picks{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px}
 .pick{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--soft)}
 .pick img{width:100%;height:100%;object-fit:cover}

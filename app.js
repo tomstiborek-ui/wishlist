@@ -85,6 +85,9 @@ const demoApi = {
   upload: async file => blobToDataUrl(await shrinkPhoto(file, 900)),
 };
 const api = DEMO ? demoApi : remoteApi;
+// Edge function that reads a product page (photos, name, price) — see supabase/functions/fetch-product
+const FETCH_FN = DEMO ? "" : `${DB.url}/functions/v1/fetch-product`;
+const proxied = u => `${FETCH_FN}?img=${encodeURIComponent(u)}`;
 
 /* ---------- state ---------- */
 const CAT_ICON = { "Oblečení": "👕", "Elektronika": "🎧", "Knihy": "📚", "Zážitky": "🎟️", "Domácnost": "🏠", "Sport": "⚽", "Kosmetika": "💄", "Šperky": "💍", "Hobby": "🎨" };
@@ -293,7 +296,7 @@ $(".seg.price").addEventListener("click", e => { if (e.target.tagName !== "INPUT
 
 /* ---------- add / edit ---------- */
 const dlgEdit = $("#dlg-edit");
-let editing = null, picks = [], formFor = null;   // picks: {path} saved, or {file, url} new
+let editing = null, picks = [], formFor = null, lastFetched = "";   // picks: {path} saved, or {file, url} new
 function openEdit(id) {
   const g = id ? S.gifts.find(x => x.id === id) : null;
   editing = g;
@@ -306,12 +309,13 @@ function openEdit(id) {
   markFor();
   picks.forEach(p => p.file && URL.revokeObjectURL(p.url));
   picks = (g?.photos || []).map(path => ({ path, url: photoSrc(path) }));
+  lastFetched = g?.url || ""; setFetchMsg(""); updateFetchRow();
   const all = [...new Set([...DEFAULT_CATS, ...categories()])];
   $("#cat-list").innerHTML = all.map(c => `<option value="${esc(c)}">`).join("");
   $("#e-cat-tiles").innerHTML = all.map(c => `<button type="button" class="tile" data-pick-cat="${esc(c)}"><span class="ic">${catIcon(c)}</span>${esc(c)}</button>`).join("");
   markCat(); renderPicks();
   dlgEdit.showModal(); dlgEdit.querySelector(".m-body").scrollTop = 0;
-  if (!matchMedia("(max-width:744px)").matches) $("#e-name").focus();
+  if (!matchMedia("(max-width:744px)").matches) $(g ? "#e-name" : "#e-url").focus();
 }
 function markFor() { document.querySelectorAll("#e-for button").forEach(b => b.setAttribute("aria-pressed", b.dataset.for === formFor)); }
 $("#e-for").addEventListener("click", e => { const b = e.target.closest("[data-for]"); if (b) { formFor = b.dataset.for; markFor(); } });
@@ -319,7 +323,7 @@ const markCat = () => $("#e-cat-tiles").querySelectorAll(".tile").forEach(c => c
 $("#e-cat").addEventListener("input", markCat);
 $("#e-cat-tiles").addEventListener("click", e => { const c = e.target.closest("[data-pick-cat]"); if (!c) return; $("#e-cat").value = $("#e-cat").value === c.dataset.pickCat ? "" : c.dataset.pickCat; markCat(); });
 function renderPicks() {
-  $("#e-picks").innerHTML = picks.map((p, i) => `<div class="pick"><img src="${esc(p.url)}" alt="">${i === 0 ? `<span class="main">Hlavní</span>` : ""}<button type="button" data-unpick="${i}" aria-label="Odebrat fotku">✕</button></div>`).join("") +
+  $("#e-picks").innerHTML = picks.map((p, i) => `<div class="pick"><img src="${esc(p.url)}" alt="">${i === 0 ? `<span class="main">Hlavní</span>` : ""}${p.remote ? `<span class="src">z obchodu</span>` : ""}<button type="button" data-unpick="${i}" aria-label="Odebrat fotku">✕</button></div>`).join("") +
     (picks.length < MAX_PHOTOS ? `<label class="add-photo" for="e-files" tabindex="0">${ICON.photo}<span>Přidat fotky</span></label>` : "");
 }
 function addFiles(files) {
@@ -336,6 +340,41 @@ dz.addEventListener("dragleave", () => dz.querySelector(".add-photo")?.classList
 dz.addEventListener("drop", e => { e.preventDefault(); addFiles(e.dataTransfer.files); });
 dlgEdit.addEventListener("paste", e => { const fs = [...(e.clipboardData?.files || [])]; if (fs.length) { e.preventDefault(); addFiles(fs); } });
 
+/* ---------- photos (and name/price) from the shop link ---------- */
+function normUrl(v) { v = v.trim(); if (v && !/^https?:\/\//i.test(v)) v = "https://" + v; return safeUrl(v); }
+function setFetchMsg(t, err) { const m = $("#e-fetch-msg"); m.textContent = t; m.classList.toggle("err", !!err); }
+function updateFetchRow() { $("#e-fetch").hidden = !FETCH_FN || !normUrl($("#e-url").value); }
+async function fetchFromLink() {
+  const url = normUrl($("#e-url").value); if (!url || !FETCH_FN) return;
+  const btn = $("#e-fetch-btn"); btn.disabled = true; lastFetched = url;
+  setFetchMsg(`Načítám z ${domain(url)}…`);
+  try {
+    const r = await fetch(`${FETCH_FN}?url=${encodeURIComponent(url)}`, { headers: auth() });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || (r.status === 404 ? "Funkce fetch-product není nasazená." : `Chyba ${r.status}`));
+    const filled = [];
+    if (d.title && !$("#e-name").value.trim()) { $("#e-name").value = d.title; filled.push("název"); }
+    if (d.price != null && !$("#e-price").value.trim() && (!d.currency || /^(CZK|Kč)$/i.test(d.currency))) { $("#e-price").value = d.price; filled.push("cenu"); }
+    const have = new Set(picks.map(p => p.remote).filter(Boolean));
+    const add = (d.images || []).filter(u => !have.has(u)).slice(0, MAX_PHOTOS - picks.length);
+    add.forEach(u => picks.push({ remote: u, url: proxied(u) }));
+    renderPicks();
+    const parts = [];
+    if (add.length) parts.push(`${add.length} ${plural(add.length, "fotka", "fotky", "fotek")}`);
+    if (filled.length) parts.push(filled.join(" a "));
+    setFetchMsg(parts.length ? `Doplněno z ${d.site || domain(url)}: ${parts.join(", ")}. Nechtěné fotky odeber křížkem.`
+      : picks.length >= MAX_PHOTOS ? "Fotek už je maximum (6)." : `Na ${d.site || domain(url)} jsem nic nenašel — fotky přidej ručně.`);
+  } catch (err) {
+    setFetchMsg(`Nepodařilo se načíst: ${err.message === "Failed to fetch" ? "obchod nebo funkce neodpovídá." : err.message}`, true);
+  } finally { btn.disabled = false; }
+}
+$("#e-fetch-btn").addEventListener("click", fetchFromLink);
+$("#e-url").addEventListener("input", updateFetchRow);
+// Pasting / finishing a new link loads photos automatically
+const autoFetch = () => { updateFetchRow(); const u = normUrl($("#e-url").value); if (u && u !== lastFetched) fetchFromLink(); };
+$("#e-url").addEventListener("change", autoFetch);
+$("#e-url").addEventListener("paste", () => setTimeout(autoFetch, 0));
+
 $("#edit-form").addEventListener("submit", async e => {
   e.preventDefault();
   const msg = $("#edit-msg"), btn = $("#e-save");
@@ -350,11 +389,17 @@ $("#edit-form").addEventListener("submit", async e => {
   if (url && !safeUrl(url)) return fail("#e-url", "Odkaz nevypadá jako webová adresa.");
   btn.disabled = true;
   try {
-    const photos = [], newCount = picks.filter(p => p.file).length; let done = 0;
+    const photos = [], newCount = picks.filter(p => p.file || p.remote).length; let done = 0, failed = 0;
     for (const [i, p] of picks.entries()) {
       if (p.file) { btn.textContent = `Nahrávám fotky ${++done}/${newCount}…`; photos.push(await api.upload(p.file, i)); }
+      else if (p.remote) {
+        btn.textContent = `Nahrávám fotky ${++done}/${newCount}…`;
+        try { const r = await fetch(p.url, { headers: auth() }); if (!r.ok) throw 0; photos.push(await api.upload(await r.blob(), i)); }
+        catch (_) { failed++; }
+      }
       else photos.push(p.path);
     }
+    if (failed) toast(`${failed} ${plural(failed, "fotku", "fotky", "fotek")} z obchodu se nepodařilo uložit`);
     btn.textContent = "Ukládám…"; msg.textContent = "";
     const data = { name, price: price === "" ? "" : +price, category: $("#e-cat").value.trim(), url, note: $("#e-note").value.trim(), photos };
     if (editing && editing.for_whom !== formFor) {      // moved to the other person: re-create, then remove the old one

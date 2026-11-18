@@ -21,6 +21,14 @@ While `DB.url` in `app.js` is empty, the site runs in demo mode: no password, sa
 
 To add a password later, run `update gift_settings set pass_hash = crypt('password', gen_salt('bf')) where id = 1;` and bring back the login screen (see the git history).
 
+## Loading photos from a shop link (Edge Function)
+When you paste a product link into the form, the site asks the `fetch-product` Edge Function to read that page. It fills in the photos, plus the name and the price in Kč when those fields are empty. It reads structured product data and Open Graph tags, so it works with most e-shops. Shops that block robots (e.g. Cloudflare checks) won't return anything; add photos by hand there.
+
+Deploy it once:
+1. Supabase → **Edge Functions** → **Deploy a new function** → **Via Editor**.
+2. Name it `fetch-product`, replace the sample code with `supabase/functions/fetch-product/index.ts`, and click **Deploy**.
+3. In the function's **Details/Settings**, turn **off** "Verify JWT" (also called "Enforce JWT verification") and save. The site uses a publishable key, which isn't a JWT.
+
 ## GitHub Pages
 Repo → Settings → Pages → Source: *Deploy from a branch*, branch `main`, folder `/ (root)`.
 For a custom domain, add a `CNAME` file with the domain name in it.
