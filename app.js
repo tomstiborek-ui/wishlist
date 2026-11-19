@@ -353,7 +353,7 @@ async function fetchFromLink() {
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(d.error || (r.status === 404 ? "Funkce fetch-product není nasazená." : `Chyba ${r.status}`));
     const filled = [];
-    if (d.title && !$("#e-name").value.trim()) { $("#e-name").value = d.title; filled.push("název"); }
+    if (d.title && !$("#e-name").value.trim()) { $("#e-name").value = d.title.split(/\s+\|\s+/)[0].trim(); filled.push("název"); }
     if (d.price != null && !$("#e-price").value.trim() && (!d.currency || /^(CZK|Kč)$/i.test(d.currency))) { $("#e-price").value = d.price; filled.push("cenu"); }
     const have = new Set(picks.map(p => p.remote).filter(Boolean));
     const add = (d.images || []).filter(u => !have.has(u)).slice(0, MAX_PHOTOS - picks.length);
