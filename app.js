@@ -167,8 +167,6 @@ function renderList() {
   $("#res-title").innerHTML = f.who === "all"
     ? `Přání pro oba. <span class="mute">Co by udělalo radost Bohouškovi a Božence.</span>`
     : `Přání pro ${PEOPLE[f.who].acc}. <span class="mute">Co by udělalo radost ${PEOPLE[f.who].dat}.</span>`;
-  const all = S.gifts.reduce((s, g) => s + (g.price || 0), 0);
-  $("#hero-eyebrow").innerHTML = (S.gifts.length ? `<span>Hodnota všech přání: <span class="num">${fmtPrice(all)}</span></span>` : "");
   if (S.loading && !S.gifts.length) {
     $("#res-sub").textContent = "Načítám…"; empty.innerHTML = "";
     grid.innerHTML = Array.from({ length: 8 }, () => `<div class="card skel"><div class="ph"></div><div class="sk" style="width:70%"></div><div class="sk" style="width:45%"></div></div>`).join("");
