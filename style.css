@@ -46,8 +46,6 @@ body::before{content:"";position:fixed;inset:0 0 0 50%;width:min(var(--wrap),cal
 .logo{grid-area:logo;justify-self:start;display:inline-flex;align-items:center;gap:8px;color:var(--ink);text-decoration:none;font-weight:700;font-size:19px;line-height:1;letter-spacing:-.03em}
 .logo svg{color:var(--accent)}
 .hdr-r{grid-area:add;justify-self:end;display:flex;align-items:center;gap:8px}
-.theme-btn{width:36px;height:36px;border-radius:50%;border:0;background:none;display:grid;place-items:center;cursor:pointer;color:var(--muted)}
-.theme-btn:hover{background:var(--accent-soft);color:var(--accent)}
 .add-top{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px 0 16px;border:0;border-radius:999px;background:var(--accent);color:#fff;font-size:14px;font-weight:500;line-height:1;cursor:pointer;white-space:nowrap;transition:background .15s}
 .add-top:hover{background:var(--ink)}
 .add-top > svg:first-child{display:none}

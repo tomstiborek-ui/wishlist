@@ -168,7 +168,7 @@ function renderList() {
     ? `Přání pro oba. <span class="mute">Co by udělalo radost Bohouškovi a Božence.</span>`
     : `Přání pro ${PEOPLE[f.who].acc}. <span class="mute">Co by udělalo radost ${PEOPLE[f.who].dat}.</span>`;
   const all = S.gifts.reduce((s, g) => s + (g.price || 0), 0);
-  $("#hero-eyebrow").innerHTML = (isWinter() ? xmasCount() : "") + (S.gifts.length ? `<span>Hodnota všech přání: <span class="num">${fmtPrice(all)}</span></span>` : "");
+  $("#hero-eyebrow").innerHTML = (S.gifts.length ? `<span>Hodnota všech přání: <span class="num">${fmtPrice(all)}</span></span>` : "");
   if (S.loading && !S.gifts.length) {
     $("#res-sub").textContent = "Načítám…"; empty.innerHTML = "";
     grid.innerHTML = Array.from({ length: 8 }, () => `<div class="card skel"><div class="ph"></div><div class="sk" style="width:70%"></div><div class="sk" style="width:45%"></div></div>`).join("");
@@ -425,75 +425,6 @@ $("#e-delete").addEventListener("click", async () => {
 
 // Close buttons + click on the backdrop
 document.querySelectorAll("dialog").forEach(d => d.addEventListener("click", e => { if (e.target === d || e.target.closest("[data-close]")) d.close(); }));
-
-/* ---------- winter edition: toggle, garland, snow, countdown ---------- */
-const isWinter = () => document.documentElement.classList.contains("winter");
-function xmasCount() {
-  const now = new Date(), today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  let eve = new Date(now.getFullYear(), 11, 24);
-  if (today > new Date(now.getFullYear(), 11, 26)) eve = new Date(now.getFullYear() + 1, 11, 24);
-  const d = Math.round((eve - today) / 864e5);
-  const t = d === 0 ? "Dnes je Štědrý den!" : d < 0 ? "Veselé Vánoce!" : `Do Štědrého dne ${plural(d, "zbývá", "zbývají", "zbývá")} ${d} ${plural(d, "den", "dny", "dní")}`;
-  return `<span class="xmas-count">🎅 ${t}</span>`;
-}
-function buildGarland() {
-  const el = $("#garland"); if (!isWinter()) { el.innerHTML = ""; return; }
-  const W = el.clientWidth || innerWidth, L = W < 600 ? 120 : 180, sag = 9, step = W < 600 ? 30 : 36;
-  const colors = ["#FF3B4E", "#FFC93C", "#3FD27A", "#4AB3FF", "#FF7AC6"];
-  let path = "M0 2";
-  for (let x = 0; x < W + L; x += L) path += ` Q${x + L / 2} ${2 + sag * 2} ${x + L} 2`;
-  let bulbs = "";
-  for (let x = step / 2, k = 0; x < W; x += step, k++) {
-    const t = (x % L) / L, y = 2 + sag * 4 * t * (1 - t), ang = (1 - 2 * t) * -28;
-    bulbs += `<i style="left:${(x - 4.5).toFixed(1)}px;top:${(y + 2).toFixed(1)}px;transform:rotate(${ang.toFixed(1)}deg);--c:${colors[k % colors.length]};--d:${((k * 0.37) % 2.6).toFixed(2)}s"></i>`;
-  }
-  el.innerHTML = `<svg viewBox="0 0 ${W} 18" preserveAspectRatio="none"><path d="${path}" fill="none" stroke="#0A241C" stroke-width="1.6"/></svg>${bulbs}`;
-}
-const Snow = (() => {
-  const cv = $("#snow"), ctx = cv.getContext("2d"); let flakes = [], raf = 0, w = 0, h = 0;
-  const still = matchMedia("(prefers-reduced-motion: reduce)");
-  function mk(any) { const r = Math.random() * 2.6 + 0.8; return { x: Math.random() * w, y: any ? Math.random() * h : -10, r, vy: r * 0.35 + 0.25, a: Math.random() * 6.28, s: Math.random() * 0.02 + 0.005, o: Math.random() * 0.5 + 0.45 }; }
-  function size() {
-    const dpr = Math.min(2, devicePixelRatio || 1); w = innerWidth; h = innerHeight;
-    cv.width = w * dpr; cv.height = h * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const n = Math.round(Math.min(140, w / 10));
-    while (flakes.length < n) flakes.push(mk(true)); flakes.length = n;
-  }
-  function draw(move) {
-    ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = "#fff"; ctx.shadowColor = "rgba(90,110,130,.55)"; ctx.shadowBlur = 2;
-    for (const f of flakes) {
-      if (move) {
-        f.a += f.s; f.y += f.vy; f.x += Math.sin(f.a) * 0.45;
-        if (f.y > h + 10) Object.assign(f, mk(false));
-        if (f.x > w + 5) f.x = -5; if (f.x < -5) f.x = w + 5;
-      }
-      ctx.globalAlpha = f.o; ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, 6.283); ctx.fill();
-    }
-  }
-  function frame() { draw(true); raf = requestAnimationFrame(frame); }
-  return {
-    start() { if (raf || !isWinter()) return; size(); if (still.matches) { draw(false); return; } raf = requestAnimationFrame(frame); },
-    stop() { cancelAnimationFrame(raf); raf = 0; ctx.clearRect(0, 0, w, h); },
-    resize() { if (isWinter()) { size(); if (still.matches) draw(false); } },
-  };
-})();
-function applyTheme() {
-  const on = isWinter();
-  $("#theme-btn").setAttribute("aria-pressed", on);
-  $("#theme-btn").title = on ? "Vypnout zimní edici" : "Zapnout zimní edici";
-  $("#theme-btn").setAttribute("aria-label", $("#theme-btn").title);
-  document.querySelector('meta[name="theme-color"]').content = on ? "#0E3B2E" : "#ffffff";
-  buildGarland(); if (on) Snow.start(); else Snow.stop();
-}
-$("#theme-btn").addEventListener("click", () => {
-  const on = document.documentElement.classList.toggle("winter");
-  store.set("darky-theme", on ? "winter" : "classic");
-  applyTheme(); render();
-});
-let rsz; addEventListener("resize", () => { clearTimeout(rsz); rsz = setTimeout(() => { buildGarland(); Snow.resize(); }, 150); });
-document.addEventListener("visibilitychange", () => { if (document.hidden) Snow.stop(); else if (isWinter()) Snow.start(); });
-applyTheme();
 
 /* ---------- start ---------- */
 load();
