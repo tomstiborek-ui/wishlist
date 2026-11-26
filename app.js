@@ -7,8 +7,8 @@ const BUCKET = "gift-photos";
 const DEMO = !DB.url;
 
 const PEOPLE = {
-  bohousek: { name: "Bohoušek", acc: "Bohouška", gen: "Bohouška" },
-  bozenka:  { name: "Boženka",  acc: "Boženku",  gen: "Boženky" },
+  bohousek: { name: "Bohoušek", acc: "Bohouška", gen: "Bohouška", dat: "Bohouškovi" },
+  bozenka:  { name: "Boženka",  acc: "Boženku",  gen: "Boženky", dat: "Božence" },
 };
 const DEFAULT_CATS = ["Oblečení", "Elektronika", "Knihy", "Zážitky", "Domácnost", "Sport", "Kosmetika", "Šperky", "Hobby"];
 const MAX_PHOTOS = 6;
@@ -106,6 +106,7 @@ const ICON = {
   ext: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>`,
   photo: `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 8"/></svg>`,
 };
+const HA = `<svg class="ha" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path class="l" d="M0 5h7"/><path class="t" d="M1 1l4 4-4 4"/></svg>`;
 const plural = (n, one, few, many) => n === 1 ? one : n >= 2 && n <= 4 ? few : many;
 
 async function load() {
@@ -163,8 +164,11 @@ function renderHeader() {
 function renderList() {
   const f = S.f, grid = $("#grid"), empty = $("#empty");
   $("#demo").hidden = !DEMO;
-  const title = f.who === "all" ? "Přání pro oba" : `Přání pro ${PEOPLE[f.who].acc}`;
-  $("#res-title").textContent = title;
+  $("#res-title").innerHTML = f.who === "all"
+    ? `Přání pro oba. <span class="mute">Co by udělalo radost Bohouškovi a Božence.</span>`
+    : `Přání pro ${PEOPLE[f.who].acc}. <span class="mute">Co by udělalo radost ${PEOPLE[f.who].dat}.</span>`;
+  const all = S.gifts.reduce((s, g) => s + (g.price || 0), 0);
+  $("#hero-eyebrow").innerHTML = (isWinter() ? xmasCount() : "") + (S.gifts.length ? `<span>Hodnota všech přání: <span class="num">${fmtPrice(all)}</span></span>` : "");
   if (S.loading && !S.gifts.length) {
     $("#res-sub").textContent = "Načítám…"; empty.innerHTML = "";
     grid.innerHTML = Array.from({ length: 8 }, () => `<div class="card skel"><div class="ph"></div><div class="sk" style="width:70%"></div><div class="sk" style="width:45%"></div></div>`).join("");
@@ -176,14 +180,14 @@ function renderList() {
     return;
   }
   const list = applyFilter(f), total = list.reduce((s, g) => s + (g.price || 0), 0);
-  $("#res-sub").innerHTML = xmasCount() + (list.length
-    ? `${list.length} ${plural(list.length, "přání", "přání", "přání")} · celkem ${fmtPrice(total)}${activeCount(f) || f.who !== "all" ? ` · <button type="button" data-act="reset">Zrušit filtry</button>` : ""}`
-    : "");
+  $("#res-sub").innerHTML = list.length
+    ? `<span class="stat"><b>${list.length}</b> ${plural(list.length, "přání", "přání", "přání")}</span><span class="stat">celkem <b>${fmtPrice(total)}</b></span>${activeCount(f) || f.who !== "all" ? `<button type="button" data-act="reset">Zrušit filtry ${HA}</button>` : ""}`
+    : "";
   grid.innerHTML = list.map(card).join("");
   if (list.length) empty.innerHTML = "";
-  else if (!S.gifts.length) empty.innerHTML = `<div class="empty"><div class="big">🎁</div><h2>Zatím žádná přání</h2><p>Přidej první věc, kterou by sis přál(a) dostat.</p><button class="btn-grad" style="width:auto" type="button" data-act="add">Přidat přání</button></div>`;
-  else if (f.who !== "all" && !S.gifts.some(g => g.for_whom === f.who)) empty.innerHTML = `<div class="empty"><div class="big">🎈</div><h2>${PEOPLE[f.who].name} zatím nemá žádná přání</h2><p>Přidej první přání pro ${PEOPLE[f.who].acc}.</p><button class="btn-grad" style="width:auto" type="button" data-act="add">Přidat přání</button></div>`;
-  else empty.innerHTML = `<div class="empty"><div class="big">🔍</div><h2>Nic tomu neodpovídá</h2><p>Zkus změnit nebo zrušit některé filtry.</p><button class="btn-line" type="button" data-act="reset">Zrušit filtry</button></div>`;
+  else if (!S.gifts.length) empty.innerHTML = `<div class="empty"><div class="big">🎁</div><h2>Zatím žádná přání</h2><p>Přidej první věc, kterou by sis přál(a) dostat.</p><button class="btn-grad" style="width:auto" type="button" data-act="add">Přidat přání ${HA}</button></div>`;
+  else if (f.who !== "all" && !S.gifts.some(g => g.for_whom === f.who)) empty.innerHTML = `<div class="empty"><div class="big">🎈</div><h2>${PEOPLE[f.who].name} zatím nemá žádná přání</h2><p>Přidej první přání pro ${PEOPLE[f.who].acc}.</p><button class="btn-grad" style="width:auto" type="button" data-act="add">Přidat přání ${HA}</button></div>`;
+  else empty.innerHTML = `<div class="empty"><div class="big">🔍</div><h2>Nic tomu neodpovídá</h2><p>Zkus změnit nebo zrušit některé filtry.</p><button class="btn-line" type="button" data-act="reset">Zrušit filtry ${HA}</button></div>`;
 }
 function photosHTML(g, cls = "") {
   const p = g.photos || [];
@@ -224,7 +228,7 @@ function renderDetail(id) {
   const p = g.photos || [], url = safeUrl(g.url), who = PEOPLE[g.for_whom];
   const shown = p.slice(0, 5);
   const added = (() => { try { return new Date(g.created_at).toLocaleDateString("cs-CZ", { day: "numeric", month: "long", year: "numeric" }); } catch (_) { return ""; } })();
-  const buy = url ? `<a class="btn-grad" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Kde koupit ${ICON.ext}</a>` : `<button class="btn-line" type="button" data-act="edit">Přidat odkaz</button>`;
+  const buy = url ? `<a class="btn-grad" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Kde koupit ${HA}</a>` : `<button class="btn-line" type="button" data-act="edit">Přidat odkaz</button>`;
   el.innerHTML = `
     <a class="back" href="#" aria-label="Zpět na přání">${ICON.back}<span>Všechna přání</span></a>
     <div class="d-carousel">${p.length ? `${photosHTML(g)}${p.length > 1 ? `<span class="count">1 / ${p.length}</span>` : ""}` : `<div class="noimg">${catIcon(g.category)}</div>`}</div>
@@ -255,7 +259,7 @@ function renderDetail(id) {
         </aside>
       </div>
     </div>
-    <div class="m-bar"><div class="pr">${g.price != null ? fmtPrice(g.price) : "Cena neuvedena"}<small>${esc(g.category || "pro " + who.acc)}</small></div>${url ? `<a class="btn-grad" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Kde koupit</a>` : `<button class="btn-dark" type="button" data-act="edit">Upravit</button>`}</div>`;
+    <div class="m-bar"><div class="pr">${g.price != null ? fmtPrice(g.price) : "Cena neuvedena"}<small>${esc(g.category || "pro " + who.acc)}</small></div>${url ? `<a class="btn-grad" href="${esc(url)}" target="_blank" rel="noopener noreferrer">Kde koupit ${HA}</a>` : `<button class="btn-dark" type="button" data-act="edit">Upravit</button>`}</div>`;
 }
 function openTour(g, start) {
   const p = g.photos || [], body = $("#tour-body");

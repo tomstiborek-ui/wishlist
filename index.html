@@ -9,9 +9,9 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,600&display=swap">
-<link rel="stylesheet" href="style.css?v=17">
-<link rel="stylesheet" href="winter.css?v=17">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,600&display=swap">
+<link rel="stylesheet" href="style.css?v=20">
+<link rel="stylesheet" href="winter.css?v=20">
 <script>/* pick the theme before first paint */
 (function(){var t=null;try{t=localStorage.getItem("darky-theme")}catch(e){}
 var d=new Date(),m=d.getMonth(),day=d.getDate(),season=(m===10&&day>=15)||m===11||(m===0&&day<=6);
@@ -45,7 +45,7 @@ if(t==="winter"||(t!=="classic"&&season))document.documentElement.classList.add(
       </button>
       <button class="add-top" type="button" data-act="add">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-      Přidat přání
+      Přidat přání <svg class="ha" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path class="l" d="M0 5h7"/><path class="t" d="M1 1l4 4-4 4"/></svg>
     </button>
     </div>
   </div>
@@ -54,13 +54,14 @@ if(t==="winter"||(t!=="classic"&&season))document.documentElement.classList.add(
 <canvas id="snow" aria-hidden="true"></canvas>
 
 <main class="page" id="list">
+  <section class="hero">
+    <div class="ribbon" aria-hidden="true"></div>
+    <p class="eyebrow" id="hero-eyebrow"></p>
+    <h1 id="res-title">Přání</h1>
+    <p class="res-sub" id="res-sub"></p>
+    <div class="hero-cta"><button class="btn-primary" type="button" data-act="add">Přidat přání <svg class="ha" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path class="l" d="M0 5h7"/><path class="t" d="M1 1l4 4-4 4"/></svg></button></div>
+  </section>
   <p class="demo" id="demo" hidden>Ukázkový režim: data se ukládají jen v tomto prohlížeči.</p>
-  <div class="res-head">
-    <div>
-      <h1 id="res-title">Přání</h1>
-      <p class="res-sub" id="res-sub"></p>
-    </div>
-  </div>
   <div class="grid" id="grid"></div>
   <div id="empty"></div>
 </main>
@@ -124,6 +125,6 @@ if(t==="winter"||(t!=="classic"&&season))document.documentElement.classList.add(
 
 <div class="toast" id="toast" role="status" hidden></div>
 
-<script src="app.js?v=17"></script>
+<script src="app.js?v=20"></script>
 </body>
 </html>
