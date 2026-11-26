@@ -1,4 +1,4 @@
-/* Dárky — shared wish list for Bohoušek and Boženka.
+/* B&B Wishlist — shared wish list for Bohoušek and Boženka.
    Data lives in Supabase (setup: gifts.sql). With an empty DB.url the site runs in demo mode (data in this browser only). */
 "use strict";
 

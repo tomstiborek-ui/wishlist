@@ -18,7 +18,7 @@ html.winter .hdr::before{content:"";position:absolute;inset:0;pointer-events:non
   radial-gradient(1.5px 1.5px at 41% 18%,#fff 50%,transparent 51%),radial-gradient(1px 1px at 63% 62%,#fff 50%,transparent 51%),
   radial-gradient(1.5px 1.5px at 77% 24%,#fff 50%,transparent 51%),radial-gradient(1px 1px at 91% 66%,#fff 50%,transparent 51%),
   radial-gradient(1px 1px at 52% 85%,#fff 50%,transparent 51%),radial-gradient(1.5px 1.5px at 33% 48%,#fff 50%,transparent 51%)}
-html.winter .logo{color:var(--gold-2);font-family:var(--serif);font-weight:700;font-size:28px;letter-spacing:-.02em;font-style:italic;position:relative}
+html.winter .logo{color:var(--gold-2);font-family:var(--serif);font-weight:700;font-size:26px;letter-spacing:-.01em;font-style:italic;position:relative}
 html.winter .logo svg{color:var(--gold);filter:drop-shadow(0 0 6px rgba(226,178,76,.55))}
 html.winter .logo::after{content:"❄";position:absolute;right:-16px;top:-8px;font-size:13px;font-style:normal;color:#fff;opacity:.85;animation:wspin 9s linear infinite}
 html.winter .add-top,html.winter .theme-btn{color:#fff}

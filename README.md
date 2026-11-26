@@ -1,4 +1,4 @@
-# Dárky
+# B&B Wishlist
 
 A shared gift wish list for Bohoušek and Boženka. It's a static site for GitHub Pages, with data and photos stored in Supabase.
 
